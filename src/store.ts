@@ -145,16 +145,16 @@ const TYPES: Record<string, Record<string, number>> = {
 };
 const getMult = (atkType: string, defType: string) => TYPES[atkType]?.[defType] ?? 1;
 export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
+export const getSellValue = (tier: number, copies: number) => Math.max(1, Math.floor((getCost(tier) * copies) * 0.7));
 
 const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
-  // EXCLUDE FULLY MAXED OUT POKEMON FROM SHOP
   const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
   const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151 && !maxedBaseIds.has(p.baseId));
   if (pool.length === 0) return null;
 
-  const isShiny = allowShiny && Math.random() < 0.05; // 5% Shiny Chance
+  const isShiny = allowShiny && Math.random() < 0.05; 
 
   if (stage >= 15 && Math.random() > 0.95 && !maxedBaseIds.has(150)) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage, isShiny); 
   
@@ -221,8 +221,7 @@ export const useGameStore = create<GameState>()(
         const pIndex = s.playerTeam.findIndex(p => p.position === pos);
         if (pIndex === -1) return s;
         const p = s.playerTeam[pIndex];
-        const totalCost = getCost(p.tier) * p.copies;
-        const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
+        const sellValue = getSellValue(p.tier, p.copies);
         const newTeam = [...s.playerTeam]; newTeam.splice(pIndex, 1);
         return { playerTeam: newTeam, gold: s.gold + sellValue };
       }),
@@ -255,7 +254,7 @@ export const useGameStore = create<GameState>()(
         await new Promise(r => setTimeout(r, 800));
 
         if (eTeam.every(e => e.hp <= 0)) {
-          if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
+          if (state.stage === MAX_STAGE) { set({ isBattling: false, isGameOver: true }); return; }
           const goldReward = 5 + state.stage; 
           const nextStage = state.stage + 1;
           const nextShop = state.shopFrozen ? state.shopItems : generateShop(nextStage, pTeam);
@@ -287,7 +286,7 @@ export const useGameStore = create<GameState>()(
               if (copies >= 3 && copies < 6) { star = 2; dexId = evos[0]; } 
               if (copies >= 6) { star = 3; dexId = evos[1]; } 
               
-              const isShiny = p.isShiny || base.isShiny; // Merges shiny status
+              const isShiny = p.isShiny || base.isShiny; 
               get().registerPokedex(dexId, isShiny);
 
               const baseDbStats = POKEMON_DB.find(b => b.baseId === p.baseId)!.stats;
