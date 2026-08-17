@@ -21,11 +21,13 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
           <div className={`star-rating ${starClass}`}>
             {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
           </div>
+
+          {/* New On-Field Type Badge */}
+          <div className={`field-type-badge bg-type-${p.type}`}>{p.type.substring(0, 3).toUpperCase()}</div>
           
           <img src={getSpriteUrl(p.pokedexId)} alt={p.name} className="pixel-sprite" draggable="false" />
           <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
 
-          {/* Automatic Hover Tooltip */}
           <div className="pokemon-tooltip">
             <h4>{p.name} <span className={`tooltip-type bg-type-${p.type}`}>{p.type}</span></h4>
             <div className="tooltip-stats">
@@ -42,8 +44,6 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 
 function App() {
   const { hasSelectedStarter, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
-  
-  // Drag State for rearranging and selling
   const [draggedPos, setDraggedPos] = useState<number | null>(null);
 
   useEffect(() => {
@@ -73,9 +73,8 @@ function App() {
       <header className="main-header">
         <div className="title-group">
           <h1>Kanto Expeditions</h1>
-          <button className="restart-btn" onClick={resetGame}>🔄 Restart</button>
+          <button className="restart-btn" onClick={resetGame}>Restart</button>
         </div>
-        <div className="header-gold">Gold: {gold} 🪙</div>
         <div className="stats"><button className="support-btn">☕ Support</button></div>
       </header>
 
@@ -103,7 +102,6 @@ function App() {
           </div>
         </div>
 
-        {/* Labels Moved Outward */}
         <h2 className="field-label player-label">YOUR PARTY</h2>
         <h2 className="field-label enemy-label">OPPONENT</h2>
 
@@ -112,14 +110,13 @@ function App() {
         </div>
       </main>
 
-      {/* Pokemart Doubles as the "Sell Zone" when dragging */}
       <footer 
         className={`pokemart ${draggedPos !== null ? 'sell-zone' : ''}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); if (draggedPos !== null) sellPokemon(draggedPos); setDraggedPos(null); }}
       >
         <div className="pokemart-header">
-          <h2>POKÉMART</h2>
+          <h2>POKÉMART <span className="gold-display">| Gold: {gold} 🪙</span></h2>
         </div>
         
         <div className="shop-layout">
