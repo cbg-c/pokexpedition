@@ -22,14 +22,20 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
             {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
           </div>
 
-          {/* New On-Field Type Badge */}
-          <div className={`field-type-badge bg-type-${p.type}`}>{p.type.substring(0, 3).toUpperCase()}</div>
+          <div className="field-type-badges">
+            {p.types.map((t: string) => (
+              <div key={t} className={`field-type-badge bg-type-${t}`}>{t.substring(0, 3).toUpperCase()}</div>
+            ))}
+          </div>
           
           <img src={getSpriteUrl(p.pokedexId)} alt={p.name} className="pixel-sprite" draggable="false" />
           <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
 
           <div className="pokemon-tooltip">
-            <h4>{p.name} <span className={`tooltip-type bg-type-${p.type}`}>{p.type}</span></h4>
+            <h4>{p.name}</h4>
+            <div className="tooltip-types">
+              {p.types.map((t: string) => <span key={t} className={`tooltip-type bg-type-${t}`}>{t}</span>)}
+            </div>
             <div className="tooltip-stats">
               <span>Atk {p.stats.attack}</span><span>Sp.A {p.stats.spAtk}</span>
               <span>Def {p.stats.defense}</span><span>Sp.D {p.stats.spDef}</span>
@@ -43,7 +49,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { hasSelectedStarter, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
+  const { hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
   const [draggedPos, setDraggedPos] = useState<number | null>(null);
 
   useEffect(() => {
@@ -57,15 +63,25 @@ function App() {
 
   return (
     <div className="game-wrapper">
-      {!hasSelectedStarter && (
-        <div className="starter-modal-overlay">
-          <div className="starter-modal">
+      {!hasSelectedStarter && !isGameOver && (
+        <div className="modal-overlay">
+          <div className="modal-box">
             <h2>Choose Your Starter</h2>
             <div className="starter-options">
               <div className="starter-card" onClick={() => selectStarter(1)}><img src={getSpriteUrl(1)} alt="Bulbasaur" /><h3 className="bg-type-grass">Bulbasaur</h3></div>
               <div className="starter-card" onClick={() => selectStarter(4)}><img src={getSpriteUrl(4)} alt="Charmander" /><h3 className="bg-type-fire">Charmander</h3></div>
               <div className="starter-card" onClick={() => selectStarter(7)}><img src={getSpriteUrl(7)} alt="Squirtle" /><h3 className="bg-type-water">Squirtle</h3></div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isGameOver && (
+        <div className="modal-overlay">
+          <div className="modal-box game-over-box">
+            <h2>Run Lost!</h2>
+            <p>You made it to Stage {stage}.</p>
+            <button className="battle-btn" onClick={resetGame}>Restart Expedition</button>
           </div>
         </div>
       )}
@@ -127,7 +143,10 @@ function App() {
               return (
                 <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
                   <div className="tier-ribbon">Tier {base.tier}</div>
-                  <div className={`type-badge bg-type-${base.type}`}>{base.type.toUpperCase()}</div>
+                  <div className="shop-type-badges">
+                    {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
+                  </div>
+                  <h3 className="shop-pokemon-name">{base.name}</h3>
                   <div className="card-image-bg"><img src={getSpriteUrl(base.baseId)} alt={base.name} /></div>
                   <div className="card-stats-grid">
                     <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
