@@ -48,9 +48,8 @@ h1, h2, h3, .battle-btn, .buy-btn, .refresh-btn { font-family: 'Press Start 2P',
 .pokemart-header h2 { font-size: 1rem; margin: 0; }
 .shop-cards { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
 .shop-card { width: 140px; border: 4px solid #333; border-radius: 8px; padding: 10px; box-shadow: 3px 3px 0 rgba(0,0,0,0.2); }
-.card-image-bg { background: rgba(255,255,255,0.6); border: 2px solid #333; display: flex; justify-content: center; margin-bottom: 10px; }
-.card-image-bg img { height: 70px; }
-.shop-card h3 { font-size: 0.6rem; text-align: center; margin: 0 0 10px; }
+
+/* SOLD OUT STYLE */
 .sold-out { 
   background: #e0e0e0; 
   border: 4px dashed #999; 
@@ -69,6 +68,10 @@ h1, h2, h3, .battle-btn, .buy-btn, .refresh-btn { font-family: 'Press Start 2P',
   line-height: 1.5;
 }
 
+.card-image-bg { background: rgba(255,255,255,0.6); border: 2px solid #333; display: flex; justify-content: center; margin-bottom: 10px; }
+.card-image-bg img { height: 70px; }
+.shop-card h3 { font-size: 0.6rem; text-align: center; margin: 0 0 10px; }
+
 /* Adjusted Stat Grid for Text */
 .card-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.55rem; font-family: sans-serif; font-weight: bold; margin-bottom: 10px; }
 .card-stats-grid span { background: rgba(255,255,255,0.6); padding: 3px; border: 1px solid rgba(0,0,0,0.1); border-radius: 2px; }
@@ -86,6 +89,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .enemy-sprite.attacking { animation: enemyAttackLunge 0.6s ease-in-out; }
 .sprite-container.damaged { animation: damagedFlash 0.5s; filter: brightness(2); }
 
+@keyframes idleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+/* UPDATED EXCITING ANIMATIONS */
 @keyframes attackLunge { 
   0%, 100% { transform: translate(0, 0); } 
   25% { transform: translate(-10px, 0); } /* Wind up pullback */
@@ -102,3 +108,4 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   10%, 50%, 90% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(-8px); } 
   30%, 70% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(8px); } 
 }
+@keyframes legendaryPulse { 50% { box-shadow: 0 0 20px #ffd700; } }
