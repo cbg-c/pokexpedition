@@ -26,7 +26,13 @@ function App() {
       </header>
 
       <main className="battle-area">
-        <div className="stage-indicator">🔴<h3>Stage {stage}</h3></div>
+        {/* Dynamic Stage Tracker */}
+        <div className="stage-tracker">
+          <h3>Stage {stage} / 20 {stage === 20 && "🏆 ELITE FOUR 🏆"}</h3>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} />
+          </div>
+        </div>
         
         <div className="combat-grid">
           {playerTeam.map(p => <PokemonSprite key={p.id} p={p} />)}
@@ -35,8 +41,9 @@ function App() {
 
         <div className="field-labels"><h2 className="player-label">PLAYER</h2><h2 className="enemy-label">OPPONENT</h2></div>
 
+        {/* Centered Start Button */}
         <div className="controls-overlay">
-          {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">⚔️ Start</button>}
+          {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">⚔️ Start Expedition</button>}
         </div>
       </main>
 
@@ -50,10 +57,11 @@ function App() {
             <div key={`${poke.pokedexId}-${i}`} className={`shop-card type-${poke.type} tier-${poke.tier}`}>
               <div className="card-image-bg"><img src={getSpriteUrl(poke.pokedexId)} alt={poke.name} /></div>
               <h3>{poke.name}</h3>
+              {/* Abbreviated Stat Text Layout */}
               <div className="card-stats-grid">
-                <span title="Attack">🗡️ {poke.stats.attack}</span><span title="Sp. Atk">🪄 {poke.stats.spAtk}</span>
-                <span title="Defense">🛡️ {poke.stats.defense}</span><span title="Sp. Def">✨ {poke.stats.spDef}</span>
-                <span title="Speed">👟 {poke.stats.speed}</span><span title="HP">❤️ {poke.stats.hp}</span>
+                <span title="Attack">Atk {poke.stats.attack}</span><span title="Sp. Atk">Sp.A {poke.stats.spAtk}</span>
+                <span title="Defense">Def {poke.stats.defense}</span><span title="Sp. Def">Sp.D {poke.stats.spDef}</span>
+                <span title="Speed">Spd {poke.stats.speed}</span><span title="HP">HP {poke.stats.hp}</span>
               </div>
               <button disabled={gold < 10 || playerTeam.length >= 6} onClick={() => buyPokemon(poke)} className="buy-btn">Buy</button>
             </div>
