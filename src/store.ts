@@ -1,63 +1,67 @@
 import { create } from 'zustand';
 
-// Defines the core data for a single Pokemon
 export type Pokemon = {
   id: string;
-  pokedexId: number; // New: Used for sprite URL
+  pokedexId: number;
   name: string;
   hp: number;
   maxHp: number;
   attack: number;
-  position: number; // New: 0-5 (Player bench), 6-11 (Enemy bench)
-  status: 'idle' | 'attacking' | 'damaged'; // New: Drives CSS animations
+  position: number;
+  status: 'idle' | 'attacking' | 'damaged';
+  type: string; // Added for styling
 };
+
+export const SHOP_ROSTER = [
+  { pokedexId: 4, name: 'Charmander', hp: 39, attack: 12, type: 'fire' },
+  { pokedexId: 7, name: 'Squirtle', hp: 44, attack: 9, type: 'water' },
+  { pokedexId: 25, name: 'Pikachu', hp: 35, attack: 15, type: 'electric' },
+  { pokedexId: 43, name: 'Oddish', hp: 45, attack: 10, type: 'grass' },
+  { pokedexId: 74, name: 'Geodude', hp: 40, attack: 16, type: 'rock' },
+  { pokedexId: 39, name: 'Jigglypuff', hp: 55, attack: 6, type: 'fairy' },
+];
 
 interface GameState {
   playerTeam: Pokemon[];
   enemyTeam: Pokemon[];
   gold: number;
+  stage: number;
   isBattling: boolean;
   startBattle: () => void;
-  gameTick: () => void; // Combines attackLogic
-  buyPokemon: (pokedexId: number, name: string, hp: number, attack: number) => void;
+  gameTick: () => void;
+  buyPokemon: (pokedexId: number, name: string, hp: number, attack: number, type: string) => void;
 }
 
-// Utility to generate sprite URLs (using publicly available showdown sprites)
 const getSpriteUrl = (id: number) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${id}.gif`;
 
 export const useGameStore = create<GameState>((set) => ({
   playerTeam: [
-    { id: 'p1', pokedexId: 1, name: 'Bulbasaur', hp: 45, maxHp: 45, attack: 10, position: 1, status: 'idle' },
+    { id: 'p1', pokedexId: 1, name: 'Bulbasaur', hp: 45, maxHp: 45, attack: 10, position: 1, status: 'idle', type: 'grass' },
   ],
   enemyTeam: [
-    { id: 'e1', pokedexId: 19, name: 'Rattata', hp: 30, maxHp: 30, attack: 5, position: 7, status: 'idle' },
+    { id: 'e1', pokedexId: 16, name: 'Pidgey', hp: 40, maxHp: 40, attack: 8, position: 7, status: 'idle', type: 'normal' },
   ],
-  gold: 0,
+  gold: 60,
+  stage: 1,
   isBattling: false,
 
   startBattle: () => set({ isBattling: true }),
 
-  // The main combat loop that handles animations and damage
   gameTick: () => {
     set((state) => {
       if (!state.isBattling) return state;
 
-      // Reset statuses from previous tick
-      const playerTeamReset = state.playerTeam.map(p => ({ ...p, status: 'idle' }));
-      const enemyTeamReset = state.enemyTeam.map(e => ({ ...e, status: 'idle' }));
+      const playerTeamReset = state.playerTeam.map(p => ({ ...p, status: 'idle' as const }));
+      const enemyTeamReset = state.enemyTeam.map(e => ({ ...e, status: 'idle' as const }));
 
-      // Combat logic
       const activePlayer = playerTeamReset.find(p => p.hp > 0);
       const activeEnemy = enemyTeamReset.find(e => e.hp > 0);
 
-      // Trigger animations and apply damage
       if (activePlayer && activeEnemy) {
-        // Player attacks enemy
         activePlayer.status = 'attacking';
         activeEnemy.status = 'damaged';
         activeEnemy.hp = Math.max(0, activeEnemy.hp - activePlayer.attack);
 
-        // Enemy attacks player (if still alive)
         if (activeEnemy.hp > 0) {
           activeEnemy.status = 'attacking';
           activePlayer.status = 'damaged';
@@ -65,21 +69,22 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
-      // Check win/loss conditions
       const allPlayerDead = playerTeamReset.every(p => p.hp <= 0);
       const allEnemyDead = enemyTeamReset.every(e => e.hp <= 0);
 
       if (allEnemyDead) {
         return {
-          enemyTeam: [{ id: Date.now().toString(), pokedexId: 16, name: 'Pidgey', hp: 40, maxHp: 40, attack: 8, position: 7, status: 'idle' }],
+          // Scale enemy slightly by stage
+          enemyTeam: [{ id: Date.now().toString(), pokedexId: 19, name: 'Rattata', hp: 40 + (state.stage * 10), maxHp: 40 + (state.stage * 10), attack: 8 + state.stage, position: 7, status: 'idle', type: 'normal' }],
           playerTeam: playerTeamReset.map(p => ({ ...p, hp: p.maxHp, status: 'idle' })),
           gold: state.gold + 10,
+          stage: state.stage + 1,
           isBattling: false
         };
       }
 
       if (allPlayerDead) {
-        alert("Run Lost! Refresh to restart.");
+        alert(`Run Lost on Stage ${state.stage}! Refresh to restart.`);
         return { isBattling: false, playerTeam: playerTeamReset, enemyTeam: enemyTeamReset };
       }
 
@@ -87,9 +92,8 @@ export const useGameStore = create<GameState>((set) => ({
     });
   },
 
-  buyPokemon: (pokedexId, name, hp, attack) => set((state) => {
+  buyPokemon: (pokedexId, name, hp, attack, type) => set((state) => {
     if (state.gold >= 10 && state.playerTeam.length < 6) {
-      // Find the first empty spot on the bench (0-5)
       const occupiedPositions = state.playerTeam.map(p => p.position);
       let newPosition = 0;
       for (let i = 0; i < 6; i++) {
@@ -99,24 +103,16 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
-      const newPokemon: Pokemon = {
-        id: Date.now().toString(),
-        pokedexId,
-        name,
-        hp,
-        maxHp: hp,
-        attack,
-        position: newPosition,
-        status: 'idle'
-      };
       return {
         gold: state.gold - 10,
-        playerTeam: [...state.playerTeam, newPokemon]
+        playerTeam: [...state.playerTeam, {
+          id: Date.now().toString(),
+          pokedexId, name, hp, maxHp: hp, attack, position: newPosition, status: 'idle', type
+        }]
       };
     }
     return state;
   })
 }));
 
-// Provide access to sprite URLs outside the store if needed
 export { getSpriteUrl };
