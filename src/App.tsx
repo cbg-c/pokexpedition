@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useGameStore, getSpriteUrl, SHOP_ROSTER } from './store';
+import { useGameStore, getSpriteUrl } from './store';
 import './App.css';
 
 function PokemonSprite({ pokemon, isEnemy }: { pokemon: any; isEnemy?: boolean }) {
@@ -21,14 +21,12 @@ function PokemonSprite({ pokemon, isEnemy }: { pokemon: any; isEnemy?: boolean }
 }
 
 function App() {
-  const { playerTeam, enemyTeam, gold, stage, isBattling, startBattle, gameTick, buyPokemon } = useGameStore();
+  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, startBattle, gameTick, buyPokemon, refreshShop } = useGameStore();
 
   useEffect(() => {
     let interval: number;
     if (isBattling) {
-      interval = setInterval(() => {
-        gameTick();
-      }, 1200); 
+      interval = setInterval(() => { gameTick(); }, 1200); 
     }
     return () => clearInterval(interval);
   }, [isBattling, gameTick]);
@@ -39,14 +37,11 @@ function App() {
         <h1>Kanto Expeditions</h1>
         <div className="stats">
           <p>Gold: {gold} 🪙</p>
-          <button className="support-btn" onClick={() => alert('Support the creator!')}>
-            ☕ Support
-          </button>
+          <button className="support-btn" onClick={() => alert('Support the creator!')}>☕ Support</button>
         </div>
       </header>
 
       <main className="battle-area">
-        {/* Stage Indicator Top Center */}
         <div className="stage-indicator">
           <div className="pokeball-icon">🔴</div>
           <div>
@@ -55,13 +50,11 @@ function App() {
           </div>
         </div>
 
-        {/* Combat Grid */}
         <div className="combat-grid">
           {playerTeam.map(p => <PokemonSprite key={p.id} pokemon={p} />)}
           {enemyTeam.map(e => <PokemonSprite key={e.id} pokemon={e} isEnemy />)}
         </div>
 
-        {/* Field Labels */}
         <div className="field-labels">
           <h2 className="player-label">PLAYER'S FIELD</h2>
           <h2 className="enemy-label">OPPONENT'S FIELD</h2>
@@ -76,26 +69,36 @@ function App() {
 
       <footer className="pokemart">
         <div className="pokemart-header">
-          <h2>POKÉMART: KANTO ROSTER <span className="cost-tag">(10 🪙 each)</span></h2>
+          <h2>POKÉMART <span className="cost-tag">(10 🪙 each)</span></h2>
+          <button className="refresh-btn" onClick={refreshShop} disabled={gold < 2}>
+            🔄 Refresh (2 🪙)
+          </button>
         </div>
         
         <div className="shop-cards">
-          {SHOP_ROSTER.map(poke => (
-            <div key={poke.pokedexId} className={`shop-card type-${poke.type}`}>
+          {shopItems.map((poke, index) => (
+            <div key={`${poke.pokedexId}-${index}`} className={`shop-card type-${poke.type} tier-${poke.tier}`}>
               <div className="card-image-bg">
                 <img src={getSpriteUrl(poke.pokedexId)} alt={poke.name} />
               </div>
               <h3>{poke.name}</h3>
-              <div className="card-stats">
-                <span>⚔️ {poke.attack}</span>
-                <span>❤️ {poke.hp}</span>
+              
+              {/* Detailed 6-Stat Grid */}
+              <div className="card-stats-grid">
+                <span title="Attack">🗡️ {poke.stats.attack}</span>
+                <span title="Sp. Attack">🪄 {poke.stats.spAtk}</span>
+                <span title="Defense">🛡️ {poke.stats.defense}</span>
+                <span title="Sp. Defense">✨ {poke.stats.spDef}</span>
+                <span title="Speed">👟 {poke.stats.speed}</span>
+                <span title="HP">❤️ {poke.stats.hp}</span>
               </div>
+
               <button 
-                disabled={gold < 10} 
-                onClick={() => buyPokemon(poke.pokedexId, poke.name, poke.hp, poke.attack, poke.type)}
+                disabled={gold < 10 || playerTeam.length >= 6} 
+                onClick={() => buyPokemon(poke)}
                 className="buy-btn"
               >
-                $10 BUY
+                Buy (10 🪙)
               </button>
             </div>
           ))}
