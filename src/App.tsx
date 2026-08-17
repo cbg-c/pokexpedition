@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, getSpriteUrl } from './store';
+import { useGameStore, getSpriteUrl, getCost } from './store';
 import './App.css';
 
 const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; isEnemy?: boolean; isActive?: boolean; isSelected?: boolean; onClick?: () => void }) => {
@@ -19,7 +19,7 @@ const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; is
         
         {/* Hover Tooltip Menu */}
         <div className="pokemon-tooltip">
-          <h4>{p.name} <span className={`tooltip-type type-${p.type}`}>{p.type}</span></h4>
+          <h4>{p.name} <span className={`tooltip-type bg-type-${p.type}`}>{p.type}</span></h4>
           <div className="tooltip-stats">
             <span>Atk {p.stats.attack}</span><span>Sp.A {p.stats.spAtk}</span>
             <span>Def {p.stats.defense}</span><span>Sp.D {p.stats.spDef}</span>
@@ -32,7 +32,7 @@ const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; is
 };
 
 function App() {
-  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots } = useGameStore();
+  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   useEffect(() => {
@@ -53,8 +53,11 @@ function App() {
   return (
     <div className="game-wrapper">
       <header className="main-header">
-        <h1>Kanto Expeditions</h1>
-        <div className="stats"><p>Gold: {gold} 🪙</p><button className="support-btn">☕ Support</button></div>
+        <div className="title-group">
+          <h1>Kanto Expeditions</h1>
+          <button className="restart-btn" onClick={resetGame}>🔄 Restart</button>
+        </div>
+        <div className="stats"><button className="support-btn">☕ Support</button></div>
       </header>
 
       <main className="battle-area">
@@ -89,23 +92,23 @@ function App() {
 
       <footer className="pokemart">
         <div className="pokemart-header">
-          <h2>POKÉMART <span className="cost-tag">(10 🪙)</span></h2>
+          <h2>POKÉMART <span className="gold-display">| Gold: {gold} 🪙</span></h2>
           <button className="refresh-btn" onClick={refreshShop} disabled={gold < 2}>🔄 Refresh (2 🪙)</button>
         </div>
         <div className="shop-cards">
           {shopItems.map((base, index) => {
             if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
-            const name = ['Bulbasaur','Charmander','Squirtle','Pidgey','Abra','Gastly','Dratini','Snorlax'].find(n => n.startsWith(base.type.charAt(0).toUpperCase())) || "Pokemon"; 
+            const cost = getCost(base.tier);
             return (
-              <div key={`${base.id}-${index}`} className={`shop-card type-${base.type} tier-${base.tier}`}>
-                <div className="type-badge">{base.type.toUpperCase()}</div>
+              <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
+                <div className={`type-badge bg-type-${base.type}`}>{base.type.toUpperCase()}</div>
                 <div className="card-image-bg"><img src={getSpriteUrl(base.id)} alt={base.type} /></div>
                 <div className="card-stats-grid">
                   <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
                   <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
                   <span title="Speed">Spd {base.stats.speed}</span><span title="HP">HP {base.stats.hp}</span>
                 </div>
-                <button disabled={gold < 10} onClick={() => buyPokemon(index)} className="buy-btn">Buy</button>
+                <button disabled={gold < cost} onClick={() => buyPokemon(index)} className="buy-btn">Buy ({cost} 🪙)</button>
               </div>
             );
           })}
