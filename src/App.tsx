@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon } from './store';
+import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS } from './store';
 import './App.css';
 
 const PokeCoin = () => <div className="pokecoin" title="Pokecoin" />;
+
+const SpriteDisplay = ({ id, isShiny, forceAnimated = false, noHover = false }: { id: number, isShiny: boolean, forceAnimated?: boolean, noHover?: boolean }) => {
+  const [hover, setHover] = useState(false);
+  const animated = forceAnimated || (!noHover && hover);
+  return (
+    <img 
+      src={getSpriteUrl(id, isShiny, animated)} 
+      alt={`sprite-${id}`} 
+      className="pixel-sprite" 
+      draggable="false"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    />
+  );
+};
 
 const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: number; p: any; isEnemy?: boolean; isActive?: boolean; onDragStart?: (p: Pokemon) => void; onDrop?: (pos: number) => void }) => {
   const starClass = p?.star === 3 ? 'star-gold' : p?.star === 2 ? 'star-silver' : 'star-bronze';
@@ -22,7 +37,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
           {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
           
           <div className={`star-rating ${starClass}`}>
-            {p.star === 3 ? 'Lv. MAX' : `Lv. ${p.copies}/${targetCopies}`}
+            {p.star === 3 ? '★ MAX' : `★ ${p.copies}/${targetCopies}`}
           </div>
 
           <div className="field-type-badges">
@@ -32,7 +47,9 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
           </div>
           
           {p.isShiny && <div className="shiny-sparkle">SHINY</div>}
-          <img src={getSpriteUrl(p.pokedexId, p.isShiny)} alt={p.name} className="pixel-sprite" draggable="false" />
+          
+          <SpriteDisplay id={p.pokedexId} isShiny={p.isShiny} forceAnimated={true} />
+          
           <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
 
           <div className="pokemon-tooltip">
@@ -54,7 +71,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, skipCombat, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
+  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, skipCombat, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [showPokedex, setShowPokedex] = useState<boolean>(false);
   const [dexView, setDexView] = useState<'normal' | 'shiny'>('normal');
@@ -64,6 +81,27 @@ function App() {
     const interval = setInterval(gameTick, 1400); 
     return () => clearInterval(interval);
   }, [isBattling, gameTick]);
+
+  if (!currentRegion) {
+    return (
+      <div className="game-wrapper landing-wrapper">
+        <div className="landing-box">
+          <h1 className="landing-title">Expeditions</h1>
+          <div className="region-grid">
+            {REGIONS.map((r, i) => {
+              const isUnlocked = i === 0 || clearedRegions.includes(REGIONS[i-1]);
+              return (
+                <div key={r} className={`region-card ${!isUnlocked ? 'locked' : ''}`} onClick={() => isUnlocked && setRegion(r)}>
+                  <h2>{r}</h2>
+                  {!isUnlocked && <span className="locked-text">(LOCKED)</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const activePlayer = playerTeam.slice().sort((a,b) => a.position - b.position).find(p => p.hp > 0);
   const activeEnemy = enemyTeam.slice().sort((a,b) => a.position - b.position).find(e => e.hp > 0);
@@ -91,7 +129,7 @@ function App() {
                   <div key={id} className={`pokedex-entry ${!isVisible ? 'unseen' : ''} ${isVisible && dexView === 'shiny' ? 'shiny-entry' : ''}`}>
                     {isVisible && dexView === 'shiny' && <div className="shiny-sparkle">SHINY</div>}
                     {isVisible ? (
-                      <img src={getSpriteUrl(id, dexView === 'shiny')} alt={`Pokemon ${id}`} draggable="false" />
+                      <SpriteDisplay id={id} isShiny={dexView === 'shiny'} noHover={true} />
                     ) : (
                       <div className="unseen-placeholder">?</div>
                     )}
@@ -109,9 +147,9 @@ function App() {
           <div className="modal-box">
             <h2>Choose Your Starter</h2>
             <div className="starter-options">
-              <div className="starter-card" onClick={() => selectStarter(1)}><img src={getSpriteUrl(1)} alt="Bulbasaur" /><h3 className="bg-type-grass">Bulbasaur</h3></div>
-              <div className="starter-card" onClick={() => selectStarter(4)}><img src={getSpriteUrl(4)} alt="Charmander" /><h3 className="bg-type-fire">Charmander</h3></div>
-              <div className="starter-card" onClick={() => selectStarter(7)}><img src={getSpriteUrl(7)} alt="Squirtle" /><h3 className="bg-type-water">Squirtle</h3></div>
+              <div className="starter-card" onClick={() => selectStarter(1)}><SpriteDisplay id={1} isShiny={false} /><h3 className="bg-type-grass">Bulbasaur</h3></div>
+              <div className="starter-card" onClick={() => selectStarter(4)}><SpriteDisplay id={4} isShiny={false} /><h3 className="bg-type-fire">Charmander</h3></div>
+              <div className="starter-card" onClick={() => selectStarter(7)}><SpriteDisplay id={7} isShiny={false} /><h3 className="bg-type-water">Squirtle</h3></div>
             </div>
           </div>
         </div>
@@ -120,18 +158,22 @@ function App() {
       {isGameOver && (
         <div className="modal-overlay">
           <div className="modal-box game-over-box">
-            <h2>{stage === 20 && enemyTeam.every(e => e.hp <= 0) ? "CHAMPION DEFEATED!" : "RUN LOST!"}</h2>
+            <h2>{stage === 20 && enemyTeam.every(e => e.hp <= 0) ? "[ CHAMPION DEFEATED ]" : "[ RUN LOST ]"}</h2>
             <p>You made it to Stage {stage}.</p>
-            <button className="battle-btn" onClick={resetGame}>Restart Expedition</button>
+            <div className="game-over-actions">
+              <button className="battle-btn" onClick={resetGame}>Restart {currentRegion}</button>
+              <button className="battle-btn alt-btn" onClick={returnToMenu}>Main Menu</button>
+            </div>
           </div>
         </div>
       )}
 
       <header className="main-header">
         <div className="title-group">
-          <h1>Kanto Expeditions</h1>
+          <h1>{currentRegion} Expeditions</h1>
           <button className="restart-btn" onClick={resetGame}>Restart</button>
           <button className="pokedex-btn" onClick={() => setShowPokedex(true)}>Pokedex</button>
+          <button className="pokedex-btn alt-btn" onClick={returnToMenu}>Menu</button>
         </div>
         <div className="header-info">
           <button className="support-btn">Support</button>
@@ -146,7 +188,7 @@ function App() {
 
         <div className="battle-area-top">
           <div className="stage-tracker">
-            <h3>Stage {stage} / 20 {stage === 20 && "ELITE FOUR"}</h3>
+            <h3>Stage {stage} / 20 {stage === 20 && "[ ELITE FOUR ]"}</h3>
             <div className="high-score-text">Furthest Reached: Stage {highScore}</div>
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
           </div>
@@ -226,7 +268,9 @@ function App() {
                   {base.isShiny && <div className="shiny-sparkle" style={{top: -5, left: 40}}>SHINY</div>}
                   
                   <h3 className="shop-pokemon-name">{base.name}</h3>
-                  <div className="card-image-bg"><img src={getSpriteUrl(base.pokedexId, base.isShiny)} alt={base.name} draggable="false" /></div>
+                  <div className="card-image-bg">
+                    <SpriteDisplay id={base.pokedexId} isShiny={base.isShiny} />
+                  </div>
                   <div className="card-stats-grid">
                     <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
                     <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
@@ -238,14 +282,14 @@ function App() {
             })}
           </div>
           
-          <div className="pokemart-actions">
+          <div className="action-buttons-row">
             <button className={`freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
               <div className="custom-icon freeze-icon" />
-              {shopFrozen ? 'Frozen' : 'Freeze'}
+              <span>{shopFrozen ? 'Frozen' : 'Freeze'}</span>
             </button>
             <button className="refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
               <div className="custom-icon refresh-icon" />
-              Refresh<br/><br/>(2 <PokeCoin />)
+              <span>Refresh (2 <PokeCoin />)</span>
             </button>
           </div>
         </div>
