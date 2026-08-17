@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type BaseStats = { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number; };
-export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; type: string; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; };
+export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; type: string; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; };
 
 const NAMES: Record<number, string> = { 1:'Bulbasaur', 2:'Ivysaur', 3:'Venusaur', 4:'Charmander', 5:'Charmeleon', 6:'Charizard', 7:'Squirtle', 8:'Wartortle', 9:'Blastoise', 16:'Pidgey', 17:'Pidgeotto', 18:'Pidgeot', 63:'Abra', 64:'Kadabra', 65:'Alakazam', 92:'Gastly', 93:'Haunter', 94:'Gengar', 147:'Dratini', 148:'Dragonair', 149:'Dragonite', 143:'Snorlax', 150:'Mewtwo' };
 
@@ -48,7 +48,7 @@ const generateEnemies = (stage: number) => {
 interface GameState {
   playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (typeof POKEMON_DB[0] | null)[];
   gold: number; stage: number; isBattling: boolean; combatText: string;
-  startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void;
+  startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -62,12 +62,28 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   startBattle: () => set({ isBattling: true, combatText: "" }),
   refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage) } : s),
+  
   swapSlots: (i1, i2) => set(s => {
     if (s.isBattling) return s;
     const pTeam = [...s.playerTeam];
     const p1 = pTeam.find(p => p.position === i1); const p2 = pTeam.find(p => p.position === i2);
     if (p1) p1.position = i2; if (p2) p2.position = i1;
     return { playerTeam: pTeam };
+  }),
+
+  sellPokemon: (pos) => set(s => {
+    if (s.isBattling) return s;
+    const pIndex = s.playerTeam.findIndex(p => p.position === pos);
+    if (pIndex === -1) return s;
+    const p = s.playerTeam[pIndex];
+    
+    // Sells for 70% of total invested gold
+    const totalCost = getCost(p.tier) * p.copies;
+    const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
+    
+    const newTeam = [...s.playerTeam];
+    newTeam.splice(pIndex, 1);
+    return { playerTeam: newTeam, gold: s.gold + sellValue };
   }),
   
   gameTick: async () => {
@@ -78,7 +94,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const p1 = pTeam.find(p => p.hp > 0); const e1 = eTeam.find(e => e.hp > 0);
     if (!p1 || !e1) return;
 
-    set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle' })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle' })) });
+    // Reset statuses and clear previous damage numbers
+    set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
     await new Promise(r => setTimeout(r, 50));
 
     let txt = "";
@@ -89,6 +106,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const isSp = atk.stats.spAtk > atk.stats.attack;
       const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
       def.hp = Math.max(0, def.hp - dmg);
+      def.lastDamageTaken = dmg; // Record for floating text
     };
 
     if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } 
@@ -99,8 +117,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (eTeam.every(e => e.hp <= 0)) {
       if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
-      const goldReward = 5 + state.stage; // Gold scales fairly with stage difficulty
-      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle' })), shopItems: generateShop(s.stage + 1), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
+      const goldReward = 5 + state.stage; 
+      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), shopItems: generateShop(s.stage + 1), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
     } else if (pTeam.every(p => p.hp <= 0)) {
       alert(`Run Lost to Stage ${state.stage}! Refresh or click Restart to try again.`); set({ isBattling: false });
     }
