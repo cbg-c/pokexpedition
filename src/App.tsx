@@ -95,6 +95,13 @@ function App() {
       </header>
 
       <main className="battle-area">
+        
+        {/* Stadium Pokeball Center Graphic */}
+        <div className="stadium-pokeball-center">
+          <div className="stadium-pokeball-line"></div>
+          <div className="stadium-pokeball-circle"></div>
+        </div>
+
         <div className="stage-tracker">
           <h3>Stage {stage} / 20 {stage === 20 && "🏆 ELITE FOUR 🏆"}</h3>
           <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
@@ -121,6 +128,9 @@ function App() {
         <h2 className="field-label player-label">YOUR PARTY</h2>
         <h2 className="field-label enemy-label">OPPONENT</h2>
 
+        {/* Massive Gold Tracker embedded in the Stadium */}
+        <div className="massive-gold-display">Gold: {gold} 🪙</div>
+
         <div className="controls-overlay">
           {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">⚔️ Start Expedition</button>}
         </div>
@@ -132,22 +142,24 @@ function App() {
         onDrop={(e) => { e.preventDefault(); if (draggedPos !== null) sellPokemon(draggedPos); setDraggedPos(null); }}
       >
         <div className="pokemart-header">
-          <h2>POKÉMART <span className="gold-display">| Gold: {gold} 🪙</span></h2>
+          <h2>POKÉMART</h2>
         </div>
         
         <div className="shop-layout">
           <div className="shop-cards">
             {shopItems.map((base, index) => {
               if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
-              const cost = getCost(base.tier);
+              const cost = getCost(base.tier) * base.copies; // Evolutions cost more!
+              const isOwned = playerTeam.some(p => p.baseId === base.baseId);
+              
               return (
-                <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
+                <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''}`}>
                   <div className="tier-ribbon">Tier {base.tier}</div>
                   <div className="shop-type-badges">
                     {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
                   </div>
                   <h3 className="shop-pokemon-name">{base.name}</h3>
-                  <div className="card-image-bg"><img src={getSpriteUrl(base.baseId)} alt={base.name} /></div>
+                  <div className="card-image-bg"><img src={getSpriteUrl(base.pokedexId)} alt={base.name} /></div>
                   <div className="card-stats-grid">
                     <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
                     <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
