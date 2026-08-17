@@ -25,7 +25,15 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .refresh-btn-large, .restart-btn { font-f
 .support-btn { background: #ff813f; color: white; border: 3px solid #333; padding: 10px; cursor: pointer; }
 
 /* BATTLE AREA */
-.battle-area { flex: 1 1 auto; min-height: 40vh; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 6px solid #333; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 6px 6px 0 rgba(0,0,0,0.2); background: linear-gradient(90deg, #78AB46 0%, #78AB46 20%, #e0c98f 20%, #e0c98f 80%, #78AB46 80%, #78AB46 100%); z-index: 10; }
+.battle-area { flex: 1 1 auto; min-height: 40vh; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 6px solid #333; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 6px 6px 0 rgba(0,0,0,0.2); background: linear-gradient(90deg, #78AB46 0%, #78AB46 20%, #e0c98f 20%, #e0c98f 80%, #78AB46 80%, #78AB46 100%); z-index: 10; overflow: hidden; }
+
+/* STADIUM POKEBALL CENTER ART */
+.stadium-pokeball-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 350px; height: 350px; border: 8px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: none; z-index: 1; }
+.stadium-pokeball-line { position: absolute; top: 50%; left: -50vw; right: -50vw; height: 8px; background: rgba(255, 255, 255, 0.4); transform: translateY(-50%); }
+.stadium-pokeball-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; border: 8px solid rgba(255, 255, 255, 0.4); border-radius: 50%; background: transparent; }
+
+/* MASSIVE GOLD DISPLAY */
+.massive-gold-display { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 2.2rem; color: #f1c40f; text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 10px 30px; border-radius: 12px; border: 4px solid #f1c40f; z-index: 15; pointer-events: none; }
 
 .stage-tracker { position: absolute; top: 15px; width: 50%; background: #fdf5e6; border: 4px solid #333; padding: 10px; z-index: 5; text-align: center; }
 .progress-bar { width: 100%; height: 10px; background: #333; border: 2px solid #fff; margin-top: 8px; }
@@ -34,7 +42,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .refresh-btn-large, .restart-btn { font-f
 @keyframes popUp { 0% { opacity: 0; transform: translateY(20px) scale(0.5); } 20% { opacity: 1; transform: translateY(0) scale(1.2); } 80% { opacity: 1; transform: translateY(-10px) scale(1); } 100% { opacity: 0; transform: translateY(-20px); } }
 
 /* RESIZED FIXED PARTY SLOTS */
-.party-lines-container { display: flex; justify-content: space-between; width: 100%; max-width: 1000px; padding: 10px 40px; box-sizing: border-box; }
+.party-lines-container { display: flex; justify-content: space-between; width: 100%; max-width: 1000px; padding: 10px 40px; box-sizing: border-box; z-index: 5; position: relative; }
 .party-line { display: flex; flex-direction: column; gap: 8px; }
 .party-slot { width: 85px; height: 85px; flex: 0 0 85px; box-sizing: border-box; background: rgba(0,0,0,0.1); border: 2px dashed #666; border-radius: 8px; display: flex; justify-content: center; align-items: center; position: relative; transition: all 0.3s; }
 .player-slot { cursor: grab; }
@@ -62,7 +70,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .refresh-btn-large, .restart-btn { font-f
 .field-type-badges { position: absolute; top: 10px; right: -15px; display: flex; flex-direction: column; gap: 2px; z-index: 15; pointer-events: none; }
 .field-type-badge { font-size: 0.4rem; padding: 2px 4px; border-radius: 4px; border: 1px solid #fff; color: #fff; text-shadow: 1px 1px 0 #000; font-weight: bold; box-shadow: 2px 2px 0 rgba(0,0,0,0.3); font-family: sans-serif; }
 
-/* TOOLTIP SIDE-POP - NO MORE CLIPPING! */
+/* TOOLTIP SIDE-POP */
 .pokemon-tooltip { position: absolute; background: rgba(0, 0, 0, 0.95); color: white; padding: 12px; border-radius: 6px; border: 2px solid #fff; font-family: sans-serif; font-size: 0.7rem; width: max-content; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.1s; z-index: 1000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
 .party-slot:hover .pokemon-tooltip { opacity: 1; visibility: visible; }
 .player-slot .pokemon-tooltip { left: 115%; top: 50%; transform: translateY(-50%); }
@@ -90,11 +98,14 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .refresh-btn-large, .restart-btn { font-f
 .sell-zone::after { content: "Drop to Sell"; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.9); color: white; font-family: 'Press Start 2P', monospace; display: flex; align-items: center; justify-content: center; font-size: 2rem; z-index: 100; border-radius: 4px; text-shadow: 4px 4px 0 #000; }
 
 .pokemart-header { display: flex; justify-content: space-between; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; }
-.gold-display { color: #f39c12; text-shadow: 1px 1px 0 #000; font-size: 1.2rem; }
 
 .shop-layout { display: flex; justify-content: center; align-items: stretch; gap: 20px; }
 .shop-cards { display: flex; gap: 10px; flex-wrap: wrap; }
-.shop-card { position: relative; width: 130px; border: 4px solid #333; border-radius: 8px; padding: 8px; box-shadow: 3px 3px 0 rgba(0,0,0,0.2); background: white; }
+.shop-card { position: relative; width: 130px; border: 4px solid #333; border-radius: 8px; padding: 8px; box-shadow: 3px 3px 0 rgba(0,0,0,0.2); background: white; transition: transform 0.2s; }
+
+/* OWNED UNIT UPGRADE HIGHLIGHT */
+.shop-card-owned { border-color: #2ecc71 !important; box-shadow: 0 0 20px rgba(46,204,113,0.8), inset 0 0 10px rgba(46,204,113,0.3) !important; transform: translateY(-5px); }
+.shop-card-owned::after { content: 'UPGRADE!'; position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: #2ecc71; color: black; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; padding: 4px 8px; border: 2px solid white; border-radius: 4px; z-index: 10; pointer-events: none; animation: pulse 1s infinite alternate; }
 
 .shop-pokemon-name { font-size: 0.55rem; text-align: center; margin: 8px 0; }
 .shop-type-badges { position: absolute; top: -10px; right: -10px; display: flex; gap: 2px; }
@@ -103,7 +114,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .refresh-btn-large, .restart-btn { font-f
 .tier-1 { background-color: #d5f5e3; border-color: #2ecc71; } .tier-1 .tier-ribbon { background: #2ecc71; }
 .tier-2 { background-color: #d6eaf8; border-color: #3498db; } .tier-2 .tier-ribbon { background: #3498db; }
 .tier-3 { background-color: #ebdef0; border-color: #9b59b6; } .tier-3 .tier-ribbon { background: #9b59b6; }
-.tier-4 { background-color: #fcf3cf; border-color: #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.8); animation: legendaryPulse 2s infinite; } .tier-4 .tier-ribbon { background: #e67e22; color: #fff; border-color: #ffd700; }
+.tier-4 { background-color: #fcf3cf; border-color: #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.8); } .tier-4 .tier-ribbon { background: #e67e22; color: #fff; border-color: #ffd700; }
 
 .tier-ribbon { position: absolute; top: -10px; left: -10px; color: white; font-size: 0.5rem; padding: 4px 8px; border-radius: 4px; border: 2px solid #fff; z-index: 6; text-shadow: 1px 1px 0 #000; }
 
@@ -126,6 +137,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .enemy-slot .sprite-container.attacking { animation: enemyAttackLunge 0.4s ease-in-out; }
 .sprite-container.damaged { animation: damagedFlash 0.5s; filter: brightness(2); }
 
+@keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.1); } }
 @keyframes idleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @keyframes attackLunge { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-10px, 0); } 50% { transform: translate(150px, 0) scale(1.2); } }
 @keyframes enemyAttackLunge { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(10px, 0) scaleX(-1); } 50% { transform: translate(-150px, 0) scale(1.2) scaleX(-1); } }
