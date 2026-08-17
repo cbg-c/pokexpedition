@@ -105,7 +105,6 @@ const getEvo = (baseId: number, level: number) => {
   return [e1, e2];
 };
 
-// Evolution Enforcer: Base until 8, 2nd at 9-11, Final at 12+
 const applyStageEvolution = (p: Pokemon, stage: number): Pokemon => {
   const evoLevel = stage >= 12 ? 2 : stage >= 9 ? 1 : 0;
   if (evoLevel === 0) return p;
@@ -117,14 +116,10 @@ const applyStageEvolution = (p: Pokemon, stage: number): Pokemon => {
   const scale = star === 3 ? 2.5 : 1.5;
   
   return {
-    ...p,
-    pokedexId: dexId,
-    name: NAMES[dexId] || p.name,
-    star, copies,
+    ...p, pokedexId: dexId, name: NAMES[dexId] || p.name, star, copies,
     maxHp: Math.floor(p.stats.hp * scale), hp: Math.floor(p.stats.hp * scale),
     stats: {
-      ...p.stats,
-      attack: Math.floor(p.stats.attack * scale), defense: Math.floor(p.stats.defense * scale),
+      ...p.stats, attack: Math.floor(p.stats.attack * scale), defense: Math.floor(p.stats.defense * scale),
       spAtk: Math.floor(p.stats.spAtk * scale), spDef: Math.floor(p.stats.spDef * scale), speed: Math.floor(p.stats.speed * scale)
     }
   };
@@ -156,11 +151,9 @@ const generateShop = (stage: number, currentTeam: Pokemon[] = []) => Array.from(
   const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151);
   if (stage >= 15 && Math.random() > 0.95) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage); 
   
-  // High TFT Odds: 10x multiplier for units you already own!
   const teamBaseIds = new Set(currentTeam.map(p => p.baseId));
   const biasedPool = pool.flatMap(p => teamBaseIds.has(p.baseId) ? [p,p,p,p,p,p,p,p,p,p] : [p]);
   const picked = biasedPool[Math.floor(Math.random() * biasedPool.length)];
-  
   return applyStageEvolution(picked, stage);
 });
 
@@ -251,7 +244,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   buyPokemon: (index) => set((s) => {
     const base = s.shopItems[index]; if (!base) return s;
-    const cost = getCost(base.tier) * base.copies; if (s.gold < cost) return s; // Pre-evolved cost more!
+    const cost = getCost(base.tier) * base.copies; if (s.gold < cost) return s; 
     
     const existing = s.playerTeam.find(p => p.baseId === base.baseId);
     const newShop = [...s.shopItems]; newShop[index] = null;
