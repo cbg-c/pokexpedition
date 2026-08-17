@@ -1,0 +1,13 @@
+.game-container { font-family: sans-serif; text-align: center; max-width: 800px; margin: 0 auto; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+.support-btn { background-color: #ff813f; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+.battlefield { display: flex; justify-content: space-between; margin: 40px 0; align-items: center; }
+.team { display: flex; flex-direction: column; gap: 10px; width: 30%; }
+.card { border: 2px solid #4CAF50; padding: 10px; border-radius: 8px; background: #e8f5e9; }
+.enemy-card { border-color: #f44336; background: #ffebee; }
+.battle-btn { font-size: 1.2rem; padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 8px; cursor: pointer; }
+.battling-text { font-size: 1.2rem; font-weight: bold; color: #f44336; animation: pulse 1s infinite; }
+.shop { margin-top: 40px; border-top: 2px solid #ccc; padding-top: 20px; }
+.shop button { margin: 0 10px; padding: 10px; cursor: pointer; }
+.shop button:disabled { opacity: 0.5; cursor: not-allowed; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
