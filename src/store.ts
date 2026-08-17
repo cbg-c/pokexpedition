@@ -3,7 +3,6 @@ import { create } from 'zustand';
 export type BaseStats = { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number; };
 export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; types: string[]; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; };
 
-// Formatted as: [id, name, types(comma separated), tier, hp, atk, def, spa, spd, spe]
 const RAW_DEX: (string | number)[][] = [
   [1,'Bulbasaur','grass,poison',1,45,49,49,65,65,45],[2,'Ivysaur','grass,poison',2,60,62,63,80,80,60],[3,'Venusaur','grass,poison',3,80,82,83,100,100,80],
   [4,'Charmander','fire',1,39,52,43,60,50,65],[5,'Charmeleon','fire',2,58,64,58,80,65,80],[6,'Charizard','fire,flying',3,78,84,78,109,85,100],
@@ -85,7 +84,6 @@ const RAW_DEX: (string | number)[][] = [
   [151,'Mew','psychic',4,100,100,100,100,100,100]
 ];
 
-// Rebuild POKEMON_DB to support string arrays for dual types
 export const POKEMON_DB: Pokemon[] = RAW_DEX.map(p => ({ 
   id: p[0].toString(), baseId: p[0] as number, pokedexId: p[0] as number, name: p[1] as string, 
   types: (p[2] as string).split(','), tier: p[3] as number, 
@@ -105,6 +103,31 @@ const getEvo = (baseId: number, level: number) => {
     if (p2 && p2.tier > p1.tier) e2 = p2.baseId;
   }
   return [e1, e2];
+};
+
+// Evolution Enforcer: Base until 8, 2nd at 9-11, Final at 12+
+const applyStageEvolution = (p: Pokemon, stage: number): Pokemon => {
+  const evoLevel = stage >= 12 ? 2 : stage >= 9 ? 1 : 0;
+  if (evoLevel === 0) return p;
+  
+  const evos = getEvo(p.baseId, 1);
+  const dexId = evoLevel === 2 ? evos[1] : evos[0];
+  const star = evoLevel === 2 ? 3 : 2;
+  const copies = evoLevel === 2 ? 9 : 3;
+  const scale = star === 3 ? 2.5 : 1.5;
+  
+  return {
+    ...p,
+    pokedexId: dexId,
+    name: NAMES[dexId] || p.name,
+    star, copies,
+    maxHp: Math.floor(p.stats.hp * scale), hp: Math.floor(p.stats.hp * scale),
+    stats: {
+      ...p.stats,
+      attack: Math.floor(p.stats.attack * scale), defense: Math.floor(p.stats.defense * scale),
+      spAtk: Math.floor(p.stats.spAtk * scale), spDef: Math.floor(p.stats.spDef * scale), speed: Math.floor(p.stats.speed * scale)
+    }
+  };
 };
 
 const TYPES: Record<string, Record<string, number>> = {
@@ -131,21 +154,22 @@ const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = []) => Array.from({ length: 5 }, () => {
   const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151);
-  if (stage >= 15 && Math.random() > 0.95) return POKEMON_DB.find(p => p.baseId === 150)!; 
+  if (stage >= 15 && Math.random() > 0.95) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage); 
+  
+  // High TFT Odds: 10x multiplier for units you already own!
   const teamBaseIds = new Set(currentTeam.map(p => p.baseId));
-  const biasedPool = pool.flatMap(p => teamBaseIds.has(p.baseId) ? [p, p, p, p, p] : [p]);
-  return biasedPool[Math.floor(Math.random() * biasedPool.length)];
+  const biasedPool = pool.flatMap(p => teamBaseIds.has(p.baseId) ? [p,p,p,p,p,p,p,p,p,p] : [p]);
+  const picked = biasedPool[Math.floor(Math.random() * biasedPool.length)];
+  
+  return applyStageEvolution(picked, stage);
 });
 
 const generateEnemies = (stage: number) => {
   if (stage === MAX_STAGE) return [{ ...POKEMON_DB.find(p=>p.baseId===150)!, id: 'boss', hp: 800, maxHp: 800, position: 0, status: 'idle' as const, copies: 9, star: 3 }];
   return Array.from({ length: Math.min(6, Math.ceil(stage / 3)) }, (_, i) => {
     const base = generateShop(stage, [])[0]; 
-    const isStage2 = stage > 5 && Math.random() > 0.5;
-    const dexId = isStage2 ? getEvo(base.baseId, 1)[0] : base.baseId;
-    const scale = isStage2 ? 1.5 : 1 + (stage * 0.1);
-    const scaledHp = Math.floor(base.stats.hp * scale);
-    return { ...base, pokedexId: dexId, name: NAMES[dexId] || base.name, stats: { ...base.stats, speed: Math.floor(base.stats.speed * scale) }, id: `e-${Date.now()}-${i}`, hp: scaledHp, maxHp: scaledHp, position: i, status: 'idle' as const, copies: isStage2 ? 3 : 1, star: isStage2 ? 2 : 1 };
+    const scaledHp = Math.floor(base.maxHp * (1 + (stage * 0.05)));
+    return { ...base, id: `e-${Date.now()}-${i}`, hp: scaledHp, maxHp: scaledHp, position: i, status: 'idle' as const };
   });
 };
 
@@ -203,9 +227,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     let txt = "";
     const applyDmg = (atk: Pokemon, def: Pokemon) => {
       atk.status = 'attacking'; def.status = 'damaged';
-      // Calculate STAB for main type against all defending types
       const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
-      
       if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
       const isSp = atk.stats.spAtk > atk.stats.attack;
       const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
@@ -229,7 +251,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   buyPokemon: (index) => set((s) => {
     const base = s.shopItems[index]; if (!base) return s;
-    const cost = getCost(base.tier); if (s.gold < cost) return s;
+    const cost = getCost(base.tier) * base.copies; if (s.gold < cost) return s; // Pre-evolved cost more!
     
     const existing = s.playerTeam.find(p => p.baseId === base.baseId);
     const newShop = [...s.shopItems]; newShop[index] = null;
@@ -238,13 +260,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (existing.copies >= 9) return s; 
       const pTeam = s.playerTeam.map(p => {
         if (p.id === existing.id) {
-          const copies = p.copies + 1;
+          const copies = p.copies + base.copies;
           let star = p.star, dexId = p.pokedexId;
           const evos = getEvo(p.baseId, 1);
           if (copies >= 3 && copies < 9) { star = 2; dexId = evos[0]; } 
           if (copies >= 9) { star = 3; dexId = evos[1]; } 
+          
+          const baseDbStats = POKEMON_DB.find(b => b.baseId === p.baseId)!.stats;
+          const baseDbHp = POKEMON_DB.find(b => b.baseId === p.baseId)!.hp;
           const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
-          return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, maxHp: Math.floor(base.stats.hp * scale), hp: Math.floor(base.stats.hp * scale), stats: { attack: Math.floor(base.stats.attack*scale), defense: Math.floor(base.stats.defense*scale), spAtk: Math.floor(base.stats.spAtk*scale), spDef: Math.floor(base.stats.spDef*scale), speed: Math.floor(base.stats.speed*scale) } };
+          
+          return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, maxHp: Math.floor(baseDbHp * scale), hp: Math.floor(baseDbHp * scale), stats: { attack: Math.floor(baseDbStats.attack*scale), defense: Math.floor(baseDbStats.defense*scale), spAtk: Math.floor(baseDbStats.spAtk*scale), spDef: Math.floor(baseDbStats.spDef*scale), speed: Math.floor(baseDbStats.speed*scale) } };
         }
         return p;
       });
@@ -253,7 +279,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (s.playerTeam.length >= 6) return s;
     const position = [0,1,2,3,4,5].find(i => !s.playerTeam.some(p => p.position === i)) ?? 0;
-    return { gold: s.gold - cost, shopItems: newShop, playerTeam: [...s.playerTeam, { ...base, id: Date.now().toString(), hp: base.stats.hp, maxHp: base.stats.hp, position, status: 'idle', copies: 1, star: 1 }] };
+    return { gold: s.gold - cost, shopItems: newShop, playerTeam: [...s.playerTeam, { ...base, id: Date.now().toString(), position, status: 'idle' }] };
   })
 }));
 
