@@ -25,7 +25,9 @@ const TYPES: Record<string, Record<string, number>> = {
 };
 const getMult = (a: string, d: string) => TYPES[a]?.[d] ?? 1;
 
+export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
 const MAX_STAGE = 20;
+
 const generateShop = (stage: number) => Array.from({ length: 5 }, () => {
   const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1));
   return pool[Math.floor(Math.random() * pool.length)];
@@ -46,12 +48,17 @@ const generateEnemies = (stage: number) => {
 interface GameState {
   playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (typeof POKEMON_DB[0] | null)[];
   gold: number; stage: number; isBattling: boolean; combatText: string;
-  startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void;
+  startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   playerTeam: [{ id: 'p1', baseId: 4, pokedexId: 4, name: 'Charmander', type: 'fire', tier: 1, stats: POKEMON_DB[1].stats, hp: POKEMON_DB[1].stats.hp, maxHp: POKEMON_DB[1].stats.hp, position: 0, status: 'idle', copies: 1, star: 1 }],
-  enemyTeam: generateEnemies(1), shopItems: generateShop(1), gold: 20, stage: 1, isBattling: false, combatText: "",
+  enemyTeam: generateEnemies(1), shopItems: generateShop(1), gold: 12, stage: 1, isBattling: false, combatText: "",
+
+  resetGame: () => set({
+    playerTeam: [{ id: 'p1', baseId: 4, pokedexId: 4, name: 'Charmander', type: 'fire', tier: 1, stats: POKEMON_DB[1].stats, hp: POKEMON_DB[1].stats.hp, maxHp: POKEMON_DB[1].stats.hp, position: 0, status: 'idle', copies: 1, star: 1 }],
+    enemyTeam: generateEnemies(1), shopItems: generateShop(1), gold: 12, stage: 1, isBattling: false, combatText: ""
+  }),
 
   startBattle: () => set({ isBattling: true, combatText: "" }),
   refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage) } : s),
@@ -92,36 +99,41 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (eTeam.every(e => e.hp <= 0)) {
       if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
-      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle' })), shopItems: generateShop(s.stage + 1), gold: s.gold + 10, stage: s.stage + 1, isBattling: false, combatText: "" }));
+      const goldReward = 5 + state.stage; // Gold scales fairly with stage difficulty
+      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle' })), shopItems: generateShop(s.stage + 1), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
     } else if (pTeam.every(p => p.hp <= 0)) {
-      alert(`Run Lost to Stage ${state.stage}! Refresh to restart.`); set({ isBattling: false });
+      alert(`Run Lost to Stage ${state.stage}! Refresh or click Restart to try again.`); set({ isBattling: false });
     }
   },
 
   buyPokemon: (index) => set((s) => {
-    const base = s.shopItems[index]; if (!base || s.gold < 10) return s;
+    const base = s.shopItems[index]; 
+    if (!base) return s;
+    const cost = getCost(base.tier);
+    if (s.gold < cost) return s;
+    
     const existing = s.playerTeam.find(p => p.baseId === base.id);
     const newShop = [...s.shopItems]; newShop[index] = null;
 
     if (existing) {
-      if (existing.copies >= 9) return s; // 9 copies = MAX (Gold Star)
+      if (existing.copies >= 9) return s; 
       const pTeam = s.playerTeam.map(p => {
         if (p.id === existing.id) {
           const copies = p.copies + 1;
           let star = p.star, dexId = p.pokedexId;
-          if (copies >= 3 && copies < 9) { star = 2; dexId = EVOS[p.baseId][0]; } // 3 copies = Silver Star
-          if (copies >= 9) { star = 3; dexId = EVOS[p.baseId][1]; } // 9 copies = Gold Star
+          if (copies >= 3 && copies < 9) { star = 2; dexId = EVOS[p.baseId][0]; } 
+          if (copies >= 9) { star = 3; dexId = EVOS[p.baseId][1]; } 
           const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
           return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, maxHp: Math.floor(base.stats.hp * scale), hp: Math.floor(base.stats.hp * scale), stats: { attack: Math.floor(base.stats.attack*scale), defense: Math.floor(base.stats.defense*scale), spAtk: Math.floor(base.stats.spAtk*scale), spDef: Math.floor(base.stats.spDef*scale), speed: Math.floor(base.stats.speed*scale) } };
         }
         return p;
       });
-      return { gold: s.gold - 10, shopItems: newShop, playerTeam: pTeam };
+      return { gold: s.gold - cost, shopItems: newShop, playerTeam: pTeam };
     }
 
     if (s.playerTeam.length >= 6) return s;
     const position = [0,1,2,3,4,5].find(i => !s.playerTeam.some(p => p.position === i)) ?? 0;
-    return { gold: s.gold - 10, shopItems: newShop, playerTeam: [...s.playerTeam, { baseId: base.id, pokedexId: base.id, name: NAMES[base.id], type: base.type, tier: base.tier, stats: base.stats, id: Date.now().toString(), hp: base.stats.hp, maxHp: base.stats.hp, position, status: 'idle', copies: 1, star: 1 }] };
+    return { gold: s.gold - cost, shopItems: newShop, playerTeam: [...s.playerTeam, { baseId: base.id, pokedexId: base.id, name: NAMES[base.id], type: base.type, tier: base.tier, stats: base.stats, id: Date.now().toString(), hp: base.stats.hp, maxHp: base.stats.hp, position, status: 'idle', copies: 1, star: 1 }] };
   })
 }));
 
