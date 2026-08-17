@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type BaseStats = { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number; };
-export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; types: string[]; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; };
+export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; types: string[]; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; isShiny: boolean; };
 
 const RAW_DEX: (string | number)[][] = [
   [1,'Bulbasaur','grass,poison',1,45,49,49,65,65,45],[2,'Ivysaur','grass,poison',2,60,62,63,80,80,60],[3,'Venusaur','grass,poison',3,80,82,83,100,100,80],
@@ -88,7 +89,7 @@ export const POKEMON_DB: Pokemon[] = RAW_DEX.map(p => ({
   id: p[0].toString(), baseId: p[0] as number, pokedexId: p[0] as number, name: p[1] as string, 
   types: (p[2] as string).split(','), tier: p[3] as number, 
   stats: { hp: p[4] as number, attack: p[5] as number, defense: p[6] as number, spAtk: p[7] as number, spDef: p[8] as number, speed: p[9] as number }, 
-  hp: p[4] as number, maxHp: p[4] as number, position: 0, status: 'idle', copies: 1, star: 1 
+  hp: p[4] as number, maxHp: p[4] as number, position: 0, status: 'idle', copies: 1, star: 1, isShiny: false 
 }));
 
 const NAMES: Record<number, string> = {}; POKEMON_DB.forEach(p => NAMES[p.baseId] = p.name);
@@ -105,18 +106,18 @@ const getEvo = (baseId: number, level: number) => {
   return [e1, e2];
 };
 
-const applyStageEvolution = (p: Pokemon, stage: number): Pokemon => {
+const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokemon => {
   const evoLevel = stage >= 12 ? 2 : stage >= 9 ? 1 : 0;
-  if (evoLevel === 0) return p;
+  if (evoLevel === 0) return { ...p, isShiny };
   
   const evos = getEvo(p.baseId, 1);
   const dexId = evoLevel === 2 ? evos[1] : evos[0];
   const star = evoLevel === 2 ? 3 : 2;
-  const copies = evoLevel === 2 ? 9 : 3;
+  const copies = evoLevel === 2 ? 6 : 3;
   const scale = star === 3 ? 2.5 : 1.5;
   
   return {
-    ...p, pokedexId: dexId, name: NAMES[dexId] || p.name, star, copies,
+    ...p, pokedexId: dexId, name: NAMES[dexId] || p.name, star, copies, isShiny,
     maxHp: Math.floor(p.stats.hp * scale), hp: Math.floor(p.stats.hp * scale),
     stats: {
       ...p.stats, attack: Math.floor(p.stats.attack * scale), defense: Math.floor(p.stats.defense * scale),
@@ -147,20 +148,27 @@ export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier
 
 const MAX_STAGE = 20;
 
-const generateShop = (stage: number, currentTeam: Pokemon[] = []) => Array.from({ length: 5 }, () => {
-  const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151);
-  if (stage >= 15 && Math.random() > 0.95) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage); 
+const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
+  // EXCLUDE FULLY MAXED OUT POKEMON FROM SHOP
+  const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
+  const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151 && !maxedBaseIds.has(p.baseId));
+  if (pool.length === 0) return null;
+
+  const isShiny = allowShiny && Math.random() < 0.05; // 5% Shiny Chance
+
+  if (stage >= 15 && Math.random() > 0.95 && !maxedBaseIds.has(150)) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage, isShiny); 
   
   const teamBaseIds = new Set(currentTeam.map(p => p.baseId));
   const biasedPool = pool.flatMap(p => teamBaseIds.has(p.baseId) ? [p,p,p,p,p,p,p,p,p,p] : [p]);
   const picked = biasedPool[Math.floor(Math.random() * biasedPool.length)];
-  return applyStageEvolution(picked, stage);
+  return applyStageEvolution(picked, stage, isShiny);
 });
 
 const generateEnemies = (stage: number) => {
-  if (stage === MAX_STAGE) return [{ ...POKEMON_DB.find(p=>p.baseId===150)!, id: 'boss', hp: 800, maxHp: 800, position: 0, status: 'idle' as const, copies: 9, star: 3 }];
+  if (stage === MAX_STAGE) return [{ ...POKEMON_DB.find(p=>p.baseId===150)!, id: 'boss', hp: 800, maxHp: 800, position: 0, status: 'idle' as const, copies: 6, star: 3, isShiny: false }];
   return Array.from({ length: Math.min(6, Math.ceil(stage / 3)) }, (_, i) => {
-    const base = generateShop(stage, [])[0]; 
+    const base = generateShop(stage, [], false)[0]; 
+    if(!base) return { ...POKEMON_DB[0], id: `e-${Date.now()}-${i}`, position: i };
     const scaledHp = Math.floor(base.maxHp * (1 + (stage * 0.05)));
     return { ...base, id: `e-${Date.now()}-${i}`, hp: scaledHp, maxHp: scaledHp, position: i, status: 'idle' as const };
   });
@@ -168,112 +176,142 @@ const generateEnemies = (stage: number) => {
 
 interface GameState {
   hasSelectedStarter: boolean; isGameOver: boolean; playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (Pokemon | null)[];
-  gold: number; stage: number; isBattling: boolean; combatText: string;
-  selectStarter: (id: number) => void; startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void;
+  gold: number; stage: number; isBattling: boolean; combatText: string; shopFrozen: boolean;
+  pokedex: Record<number, { seen: boolean, shiny: boolean }>; highScore: number;
+  selectStarter: (id: number) => void; startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void; toggleFreeze: () => void; registerPokedex: (dexId: number, isShiny: boolean) => void;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
-  hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "",
+export const useGameStore = create<GameState>()(
+  persist(
+    (set, get) => ({
+      hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScore: 1,
 
-  selectStarter: (id) => set({
-    hasSelectedStarter: true,
-    playerTeam: [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1 }],
-    gold: 12,
-    shopItems: generateShop(1, [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1 } as Pokemon])
-  }),
+      registerPokedex: (dexId, isShiny) => set(s => {
+        const entry = s.pokedex[dexId] || { seen: false, shiny: false };
+        return { pokedex: { ...s.pokedex, [dexId]: { seen: true, shiny: entry.shiny || isShiny } } };
+      }),
 
-  resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "" }),
+      selectStarter: (id) => {
+        const isShiny = Math.random() < 0.05;
+        get().registerPokedex(id, isShiny);
+        set({
+          hasSelectedStarter: true,
+          playerTeam: [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1, isShiny }],
+          gold: 12,
+          shopItems: generateShop(1, [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1, isShiny } as Pokemon])
+        });
+      },
 
-  startBattle: () => set({ isBattling: true, combatText: "" }),
-  refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
-  
-  swapSlots: (i1, i2) => set(s => {
-    if (s.isBattling) return s;
-    const pTeam = [...s.playerTeam];
-    const p1 = pTeam.find(p => p.position === i1); const p2 = pTeam.find(p => p.position === i2);
-    if (p1) p1.position = i2; if (p2) p2.position = i1;
-    return { playerTeam: pTeam };
-  }),
+      resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false }),
 
-  sellPokemon: (pos) => set(s => {
-    if (s.isBattling) return s;
-    const pIndex = s.playerTeam.findIndex(p => p.position === pos);
-    if (pIndex === -1) return s;
-    const p = s.playerTeam[pIndex];
-    const totalCost = getCost(p.tier) * p.copies;
-    const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
-    const newTeam = [...s.playerTeam]; newTeam.splice(pIndex, 1);
-    return { playerTeam: newTeam, gold: s.gold + sellValue };
-  }),
-  
-  gameTick: async () => {
-    const state = get(); if (!state.isBattling) return;
-    const pTeam = [...state.playerTeam].sort((a, b) => a.position - b.position);
-    const eTeam = [...state.enemyTeam].sort((a, b) => a.position - b.position);
+      toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
+      startBattle: () => set({ isBattling: true, combatText: "" }),
+      refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
+      
+      swapSlots: (i1, i2) => set(s => {
+        if (s.isBattling) return s;
+        const pTeam = [...s.playerTeam];
+        const p1 = pTeam.find(p => p.position === i1); const p2 = pTeam.find(p => p.position === i2);
+        if (p1) p1.position = i2; if (p2) p2.position = i1;
+        return { playerTeam: pTeam };
+      }),
 
-    const p1 = pTeam.find(p => p.hp > 0); const e1 = eTeam.find(e => e.hp > 0);
-    if (!p1 || !e1) return;
+      sellPokemon: (pos) => set(s => {
+        if (s.isBattling) return s;
+        const pIndex = s.playerTeam.findIndex(p => p.position === pos);
+        if (pIndex === -1) return s;
+        const p = s.playerTeam[pIndex];
+        const totalCost = getCost(p.tier) * p.copies;
+        const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
+        const newTeam = [...s.playerTeam]; newTeam.splice(pIndex, 1);
+        return { playerTeam: newTeam, gold: s.gold + sellValue };
+      }),
+      
+      gameTick: async () => {
+        const state = get(); if (!state.isBattling) return;
+        const pTeam = [...state.playerTeam].sort((a, b) => a.position - b.position);
+        const eTeam = [...state.enemyTeam].sort((a, b) => a.position - b.position);
 
-    set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
-    await new Promise(r => setTimeout(r, 50));
+        const p1 = pTeam.find(p => p.hp > 0); const e1 = eTeam.find(e => e.hp > 0);
+        if (!p1 || !e1) return;
 
-    let txt = "";
-    const applyDmg = (atk: Pokemon, def: Pokemon) => {
-      atk.status = 'attacking'; def.status = 'damaged';
-      const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
-      if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
-      const isSp = atk.stats.spAtk > atk.stats.attack;
-      const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
-      def.hp = Math.max(0, def.hp - dmg); def.lastDamageTaken = dmg;
-    };
+        set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
+        await new Promise(r => setTimeout(r, 50));
 
-    if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } 
-    else { applyDmg(e1, p1); if (p1.hp > 0) applyDmg(p1, e1); }
+        let txt = "";
+        const applyDmg = (atk: Pokemon, def: Pokemon) => {
+          atk.status = 'attacking'; def.status = 'damaged';
+          const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
+          if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
+          const isSp = atk.stats.spAtk > atk.stats.attack;
+          const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
+          def.hp = Math.max(0, def.hp - dmg); def.lastDamageTaken = dmg;
+        };
 
-    set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
-    await new Promise(r => setTimeout(r, 800));
+        if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } 
+        else { applyDmg(e1, p1); if (p1.hp > 0) applyDmg(p1, e1); }
 
-    if (eTeam.every(e => e.hp <= 0)) {
-      if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
-      const goldReward = 5 + state.stage; 
-      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), shopItems: generateShop(s.stage + 1, pTeam), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
-    } else if (pTeam.every(p => p.hp <= 0)) {
-      set({ isBattling: false, isGameOver: true });
-    }
-  },
+        set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
+        await new Promise(r => setTimeout(r, 800));
 
-  buyPokemon: (index) => set((s) => {
-    const base = s.shopItems[index]; if (!base) return s;
-    const cost = getCost(base.tier) * base.copies; if (s.gold < cost) return s; 
-    
-    const existing = s.playerTeam.find(p => p.baseId === base.baseId);
-    const newShop = [...s.shopItems]; newShop[index] = null;
-
-    if (existing) {
-      if (existing.copies >= 9) return s; 
-      const pTeam = s.playerTeam.map(p => {
-        if (p.id === existing.id) {
-          const copies = p.copies + base.copies;
-          let star = p.star, dexId = p.pokedexId;
-          const evos = getEvo(p.baseId, 1);
-          if (copies >= 3 && copies < 9) { star = 2; dexId = evos[0]; } 
-          if (copies >= 9) { star = 3; dexId = evos[1]; } 
-          
-          const baseDbStats = POKEMON_DB.find(b => b.baseId === p.baseId)!.stats;
-          const baseDbHp = POKEMON_DB.find(b => b.baseId === p.baseId)!.hp;
-          const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
-          
-          return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, maxHp: Math.floor(baseDbHp * scale), hp: Math.floor(baseDbHp * scale), stats: { attack: Math.floor(baseDbStats.attack*scale), defense: Math.floor(baseDbStats.defense*scale), spAtk: Math.floor(baseDbStats.spAtk*scale), spDef: Math.floor(baseDbStats.spDef*scale), speed: Math.floor(baseDbStats.speed*scale) } };
+        if (eTeam.every(e => e.hp <= 0)) {
+          if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
+          const goldReward = 5 + state.stage; 
+          const nextStage = state.stage + 1;
+          const nextShop = state.shopFrozen ? state.shopItems : generateShop(nextStage, pTeam);
+          set(s => ({ 
+            enemyTeam: generateEnemies(nextStage), 
+            playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), 
+            shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, combatText: "", shopFrozen: false,
+            highScore: Math.max(s.highScore, nextStage)
+          }));
+        } else if (pTeam.every(p => p.hp <= 0)) {
+          set({ isBattling: false, isGameOver: true });
         }
-        return p;
-      });
-      return { gold: s.gold - cost, shopItems: newShop, playerTeam: pTeam };
+      },
+
+      buyPokemon: (index) => set((s) => {
+        const base = s.shopItems[index]; if (!base) return s;
+        const cost = getCost(base.tier) * base.copies; if (s.gold < cost) return s; 
+        
+        const existing = s.playerTeam.find(p => p.baseId === base.baseId);
+        const newShop = [...s.shopItems]; newShop[index] = null;
+
+        if (existing) {
+          if (existing.copies >= 6) return s; 
+          const pTeam = s.playerTeam.map(p => {
+            if (p.id === existing.id) {
+              const copies = Math.min(6, p.copies + base.copies);
+              let star = p.star, dexId = p.pokedexId;
+              const evos = getEvo(p.baseId, 1);
+              if (copies >= 3 && copies < 6) { star = 2; dexId = evos[0]; } 
+              if (copies >= 6) { star = 3; dexId = evos[1]; } 
+              
+              const isShiny = p.isShiny || base.isShiny; // Merges shiny status
+              get().registerPokedex(dexId, isShiny);
+
+              const baseDbStats = POKEMON_DB.find(b => b.baseId === p.baseId)!.stats;
+              const baseDbHp = POKEMON_DB.find(b => b.baseId === p.baseId)!.hp;
+              const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
+              
+              return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, isShiny, maxHp: Math.floor(baseDbHp * scale), hp: Math.floor(baseDbHp * scale), stats: { attack: Math.floor(baseDbStats.attack*scale), defense: Math.floor(baseDbStats.defense*scale), spAtk: Math.floor(baseDbStats.spAtk*scale), spDef: Math.floor(baseDbStats.spDef*scale), speed: Math.floor(baseDbStats.speed*scale) } };
+            }
+            return p;
+          });
+          return { gold: s.gold - cost, shopItems: newShop, playerTeam: pTeam };
+        }
+
+        if (s.playerTeam.length >= 6) return s;
+        get().registerPokedex(base.pokedexId, base.isShiny);
+        const position = [0,1,2,3,4,5].find(i => !s.playerTeam.some(p => p.position === i)) ?? 0;
+        return { gold: s.gold - cost, shopItems: newShop, playerTeam: [...s.playerTeam, { ...base, id: Date.now().toString(), position, status: 'idle' }] };
+      })
+    }),
+    {
+      name: 'kanto-expeditions-storage',
+      partialize: (state) => ({ pokedex: state.pokedex, highScore: state.highScore })
     }
+  )
+);
 
-    if (s.playerTeam.length >= 6) return s;
-    const position = [0,1,2,3,4,5].find(i => !s.playerTeam.some(p => p.position === i)) ?? 0;
-    return { gold: s.gold - cost, shopItems: newShop, playerTeam: [...s.playerTeam, { ...base, id: Date.now().toString(), position, status: 'idle' }] };
-  })
-}));
-
-export const getSpriteUrl = (id: number) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${id}.gif`;
+export const getSpriteUrl = (id: number, isShiny: boolean = false) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${isShiny ? 'shiny/' : ''}${id}.gif`;
