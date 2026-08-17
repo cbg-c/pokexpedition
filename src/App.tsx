@@ -7,34 +7,26 @@ const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick, onSell }: { p:
 
   const starClass = p.star === 3 ? 'star-gold' : p.star === 2 ? 'star-silver' : 'star-bronze';
   const targetCopies = p.star === 1 ? 3 : 9;
-  
-  // Calculate Sell Value
-  const totalCost = getCost(p.tier) * p.copies;
-  const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
+  const sellValue = Math.max(1, Math.floor((getCost(p.tier) * p.copies) * 0.7));
 
   return (
     <div className={`party-slot ${isEnemy ? 'enemy-slot' : 'player-slot'} ${isActive ? 'active-fighter' : ''} ${isSelected ? 'selected' : ''}`} onClick={onClick}>
       <div className={`sprite-container ${p.status}`}>
+        {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
         
-        {/* Floating Damage Animation */}
-        {p.lastDamageTaken != null && p.lastDamageTaken > 0 && (
-          <div className="damage-text">-{p.lastDamageTaken}</div>
-        )}
-
         <div className={`star-rating ${starClass}`}>
           {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
         </div>
+        
         <img src={getSpriteUrl(p.pokedexId)} alt={p.name} className="pixel-sprite" />
         <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
         
-        {/* Sell Button (Only shows when selected) */}
         {!isEnemy && isSelected && (
           <button className="sell-btn" onClick={(e) => { e.stopPropagation(); onSell?.(); }}>
             Sell ({sellValue}🪙)
           </button>
         )}
 
-        {/* Hover Tooltip Menu */}
         <div className="pokemon-tooltip">
           <h4>{p.name} <span className={`tooltip-type bg-type-${p.type}`}>{p.type}</span></h4>
           <div className="tooltip-stats">
@@ -49,7 +41,7 @@ const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick, onSell }: { p:
 };
 
 function App() {
-  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
+  const { hasSelectedStarter, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   useEffect(() => {
@@ -61,13 +53,8 @@ function App() {
   const handleSlotClick = (pos: number) => {
     if (isBattling) return;
     if (selectedSlot === null) setSelectedSlot(pos);
-    else if (selectedSlot === pos) setSelectedSlot(null); // Deselect if clicked again
+    else if (selectedSlot === pos) setSelectedSlot(null);
     else { swapSlots(selectedSlot, pos); setSelectedSlot(null); }
-  };
-
-  const handleSell = (pos: number) => {
-    sellPokemon(pos);
-    setSelectedSlot(null);
   };
 
   const activePlayer = playerTeam.slice().sort((a,b) => a.position - b.position).find(p => p.hp > 0);
@@ -75,11 +62,36 @@ function App() {
 
   return (
     <div className="game-wrapper">
+      {/* STARTER SELECTION MODAL */}
+      {!hasSelectedStarter && (
+        <div className="starter-modal-overlay">
+          <div className="starter-modal">
+            <h2>Choose Your Starter</h2>
+            <div className="starter-options">
+              <div className="starter-card" onClick={() => selectStarter(1)}>
+                <img src={getSpriteUrl(1)} alt="Bulbasaur" />
+                <h3 className="bg-type-grass">Bulbasaur</h3>
+              </div>
+              <div className="starter-card" onClick={() => selectStarter(4)}>
+                <img src={getSpriteUrl(4)} alt="Charmander" />
+                <h3 className="bg-type-fire">Charmander</h3>
+              </div>
+              <div className="starter-card" onClick={() => selectStarter(7)}>
+                <img src={getSpriteUrl(7)} alt="Squirtle" />
+                <h3 className="bg-type-water">Squirtle</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="main-header">
         <div className="title-group">
           <h1>Kanto Expeditions</h1>
           <button className="restart-btn" onClick={resetGame}>🔄 Restart</button>
         </div>
+        {/* MASSIVE GOLD DISPLAY */}
+        <div className="header-gold">Gold: {gold} 🪙</div>
         <div className="stats"><button className="support-btn">☕ Support</button></div>
       </header>
 
@@ -95,7 +107,7 @@ function App() {
           <div className="party-line player-line">
             {[0,1,2,3,4,5].map(pos => {
               const p = playerTeam.find(p => p.position === pos);
-              return <PokemonSlot key={`p-${pos}`} p={p} isActive={p?.id === activePlayer?.id} isSelected={selectedSlot === pos} onClick={() => handleSlotClick(pos)} onSell={() => handleSell(pos)} />;
+              return <PokemonSlot key={`p-${pos}`} p={p} isActive={p?.id === activePlayer?.id} isSelected={selectedSlot === pos} onClick={() => handleSlotClick(pos)} onSell={() => sellPokemon(pos)} />;
             })}
           </div>
           <div className="party-line enemy-line">
@@ -115,7 +127,7 @@ function App() {
 
       <footer className="pokemart">
         <div className="pokemart-header">
-          <h2>POKÉMART <span className="gold-display">| Gold: {gold} 🪙</span></h2>
+          <h2>POKÉMART</h2>
         </div>
         
         <div className="shop-layout">
@@ -125,8 +137,9 @@ function App() {
               const cost = getCost(base.tier);
               return (
                 <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
+                  <div className="tier-ribbon">Tier {base.tier}</div>
                   <div className={`type-badge bg-type-${base.type}`}>{base.type.toUpperCase()}</div>
-                  <div className="card-image-bg"><img src={getSpriteUrl(base.id)} alt={base.type} /></div>
+                  <div className="card-image-bg"><img src={getSpriteUrl(base.baseId)} alt={base.name} /></div>
                   <div className="card-stats-grid">
                     <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
                     <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
