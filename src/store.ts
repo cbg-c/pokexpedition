@@ -147,21 +147,20 @@ const getMult = (atkType: string, defType: string) => TYPES[atkType]?.[defType] 
 export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
 export const getSellValue = (tier: number, copies: number) => Math.max(1, Math.floor((getCost(tier) * copies) * 0.7));
 
+export const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos'];
 const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
   const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
-  
-  // RESTRICT TO BASE FORMS ONLY! Ensures Wild Charizards don't spawn early!
   const pool = POKEMON_DB.filter(p => 
-    p.baseId === p.pokedexId && // <--- Crucial: Only base forms allowed
+    p.baseId === p.pokedexId && 
     p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && 
     p.baseId !== 150 && p.baseId !== 151 && 
     !maxedBaseIds.has(p.baseId)
   );
   if (pool.length === 0) return null;
 
-  const isShiny = allowShiny && Math.random() < 0.015; // Reduced to 1.5%
+  const isShiny = allowShiny && Math.random() < 0.0075; // 0.75% Shiny Rate
 
   if (stage >= 15 && Math.random() > 0.95 && !maxedBaseIds.has(150)) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage, isShiny); 
   
@@ -182,16 +181,22 @@ const generateEnemies = (stage: number) => {
 };
 
 interface GameState {
+  currentRegion: string | null; clearedRegions: string[];
   hasSelectedStarter: boolean; isGameOver: boolean; playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (Pokemon | null)[];
   gold: number; stage: number; isBattling: boolean; combatText: string; shopFrozen: boolean;
   pokedex: Record<number, { seen: boolean, shiny: boolean }>; highScore: number;
+  setRegion: (r: string) => void; returnToMenu: () => void;
   selectStarter: (id: number) => void; startBattle: () => void; skipCombat: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void; toggleFreeze: () => void; registerPokedex: (dexId: number, isShiny: boolean) => void;
 }
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
+      currentRegion: null, clearedRegions: [],
       hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScore: 1,
+
+      setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '' }),
+      returnToMenu: () => set({ currentRegion: null }),
 
       registerPokedex: (dexId, isShiny) => set(s => {
         const entry = s.pokedex[dexId] || { seen: false, shiny: false };
@@ -199,7 +204,7 @@ export const useGameStore = create<GameState>()(
       }),
 
       selectStarter: (id) => {
-        const isShiny = Math.random() < 0.015;
+        const isShiny = Math.random() < 0.0075;
         get().registerPokedex(id, isShiny);
         set({
           hasSelectedStarter: true,
@@ -217,7 +222,7 @@ export const useGameStore = create<GameState>()(
       skipCombat: () => {
         const state = get();
         if (!state.isBattling) return;
-        set({ isBattling: false }); // Kills the interval loop
+        set({ isBattling: false }); 
         
         let pTeam = [...state.playerTeam].map(p => ({ ...p, status: 'idle' as const, lastDamageTaken: null }));
         let eTeam = [...state.enemyTeam].map(e => ({ ...e, status: 'idle' as const, lastDamageTaken: null }));
@@ -244,7 +249,12 @@ export const useGameStore = create<GameState>()(
         }
 
         if (eTeam.every(e => e.hp <= 0)) {
-            if (state.stage === MAX_STAGE) { set({ isGameOver: true }); return; }
+            if (state.stage === MAX_STAGE) { 
+              const nextCleared = [...state.clearedRegions];
+              if (state.currentRegion && !nextCleared.includes(state.currentRegion)) nextCleared.push(state.currentRegion);
+              set({ isGameOver: true, clearedRegions: nextCleared }); 
+              return; 
+            }
             const goldReward = 5 + state.stage;
             const nextStage = state.stage + 1;
             const nextShop = state.shopFrozen ? state.shopItems : generateShop(nextStage, pTeam);
@@ -289,11 +299,11 @@ export const useGameStore = create<GameState>()(
 
         set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
         await new Promise(r => setTimeout(r, 50));
-        if (!get().isBattling) return; // Prevent tick if skipped!
+        if (!get().isBattling) return; 
 
         let txt = "";
         const applyDmg = (atk: Pokemon, def: Pokemon) => {
-          if (def.hp <= 0) return; // Prevents hitting dead pokemon
+          if (def.hp <= 0) return; 
           atk.status = 'attacking'; def.status = 'damaged';
           const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
           if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
@@ -310,7 +320,12 @@ export const useGameStore = create<GameState>()(
         if (!get().isBattling) return; 
 
         if (eTeam.every(e => e.hp <= 0)) {
-          if (state.stage === MAX_STAGE) { set({ isBattling: false, isGameOver: true }); return; }
+          if (state.stage === MAX_STAGE) { 
+            const nextCleared = [...state.clearedRegions];
+            if (state.currentRegion && !nextCleared.includes(state.currentRegion)) nextCleared.push(state.currentRegion);
+            set({ isBattling: false, isGameOver: true, clearedRegions: nextCleared }); 
+            return; 
+          }
           const goldReward = 5 + state.stage; 
           const nextStage = state.stage + 1;
           const nextShop = state.shopFrozen ? state.shopItems : generateShop(nextStage, pTeam);
@@ -364,9 +379,14 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'kanto-expeditions-storage',
-      partialize: (state) => ({ pokedex: state.pokedex, highScore: state.highScore })
+      partialize: (state) => ({ pokedex: state.pokedex, highScore: state.highScore, clearedRegions: state.clearedRegions })
     }
   )
 );
 
-export const getSpriteUrl = (id: number, isShiny: boolean = false) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${isShiny ? 'shiny/' : ''}${id}.gif`;
+export const getSpriteUrl = (id: number, isShiny: boolean = false, animated: boolean = true) => {
+  if (animated) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${isShiny ? 'shiny/' : ''}${id}.gif`;
+  }
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${isShiny ? 'shiny/' : ''}${id}.png`;
+};
