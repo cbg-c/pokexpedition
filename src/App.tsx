@@ -54,7 +54,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
+  const { hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, skipCombat, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [showPokedex, setShowPokedex] = useState<boolean>(false);
   const [dexView, setDexView] = useState<'normal' | 'shiny'>('normal');
@@ -180,6 +180,7 @@ function App() {
 
         <div className="controls-overlay">
           {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">Start Expedition</button>}
+          {isBattling && <button onClick={skipCombat} className="battle-btn skip-btn">Skip Combat</button>}
         </div>
       </main>
 
@@ -215,7 +216,6 @@ function App() {
                 >
                   <div className="tier-ribbon">Tier {base.tier}</div>
                   
-                  {/* Pokedex Tracker Icon */}
                   {isCaught && <div className="caught-icon" title="Caught" />}
                   
                   <div className="shop-type-badges">
@@ -240,11 +240,11 @@ function App() {
           
           <div className="pokemart-actions">
             <button className={`freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
-              <span className="btn-icon">❄</span>
+              <div className="custom-icon freeze-icon" />
               {shopFrozen ? 'Frozen' : 'Freeze'}
             </button>
             <button className="refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
-              <span className="btn-icon">↻</span>
+              <div className="custom-icon refresh-icon" />
               Refresh<br/><br/>(2 <PokeCoin />)
             </button>
           </div>
