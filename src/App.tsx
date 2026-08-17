@@ -19,7 +19,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
           {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
           
           <div className={`star-rating ${starClass}`}>
-            {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
+            {p.star === 3 ? '★ MAX' : `★ ${p.copies}/${targetCopies}`}
           </div>
 
           <div className="field-type-badges">
@@ -96,40 +96,47 @@ function App() {
 
       <main className="battle-area">
         
-        {/* Stadium Pokeball Center Graphic */}
-        <div className="stadium-pokeball-center">
-          <div className="stadium-pokeball-line"></div>
-          <div className="stadium-pokeball-circle"></div>
+        {/* Confined Stadium Art */}
+        <div className="stadium-art">
+          <div className="stadium-line"></div>
+          <div className="stadium-circle"><div className="stadium-inner-circle"></div></div>
         </div>
 
-        <div className="stage-tracker">
-          <h3>Stage {stage} / 20 {stage === 20 && "🏆 ELITE FOUR 🏆"}</h3>
-          <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
+        {/* Top Section */}
+        <div className="battle-area-top">
+          <div className="stage-tracker">
+            <h3>Stage {stage} / 20 {stage === 20 && "🏆 ELITE FOUR 🏆"}</h3>
+            <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
+          </div>
         </div>
 
         {combatText && <div className="combat-text">{combatText}</div>}
         
-        <div className="party-lines-container">
-          <div className="party-line player-line">
-            {[0,1,2,3,4,5].map(pos => {
-              const p = playerTeam.find(p => p.position === pos);
-              return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} 
-                        onDragStart={(p) => setDraggedPos(p)} onDrop={(targetPos) => { if (draggedPos !== null) swapSlots(draggedPos, targetPos); setDraggedPos(null); }} />;
-            })}
-          </div>
-          <div className="party-line enemy-line">
-            {[0,1,2,3,4,5].map(pos => {
-              const e = enemyTeam.find(e => e.position === pos);
-              return <PokemonSlot key={`e-${pos}`} pos={pos} p={e} isEnemy isActive={e?.id === activeEnemy?.id} />;
-            })}
+        {/* Middle Section: Parties */}
+        <div className="battle-area-middle">
+          <div className="party-lines-container">
+            <div className="party-line player-line">
+              {[0,1,2,3,4,5].map(pos => {
+                const p = playerTeam.find(p => p.position === pos);
+                return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} 
+                          onDragStart={(p) => setDraggedPos(p)} onDrop={(targetPos) => { if (draggedPos !== null) swapSlots(draggedPos, targetPos); setDraggedPos(null); }} />;
+              })}
+            </div>
+            <div className="party-line enemy-line">
+              {[0,1,2,3,4,5].map(pos => {
+                const e = enemyTeam.find(e => e.position === pos);
+                return <PokemonSlot key={`e-${pos}`} pos={pos} p={e} isEnemy isActive={e?.id === activeEnemy?.id} />;
+              })}
+            </div>
           </div>
         </div>
 
-        <h2 className="field-label player-label">YOUR PARTY</h2>
-        <h2 className="field-label enemy-label">OPPONENT</h2>
-
-        {/* Massive Gold Tracker embedded in the Stadium */}
-        <div className="massive-gold-display">Gold: {gold} 🪙</div>
+        {/* Bottom Section: Gold & Labels */}
+        <div className="battle-area-bottom">
+          <h2 className="field-label player-label">YOUR PARTY</h2>
+          <div className="massive-gold-display">Gold: {gold} 🪙</div>
+          <h2 className="field-label enemy-label">OPPONENT</h2>
+        </div>
 
         <div className="controls-overlay">
           {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">⚔️ Start Expedition</button>}
@@ -149,11 +156,16 @@ function App() {
           <div className="shop-cards">
             {shopItems.map((base, index) => {
               if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
-              const cost = getCost(base.tier) * base.copies; // Evolutions cost more!
+              const cost = getCost(base.tier) * base.copies;
               const isOwned = playerTeam.some(p => p.baseId === base.baseId);
+              const canAfford = gold >= cost;
               
               return (
-                <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''}`}>
+                <div 
+                  key={`${base.id}-${index}`} 
+                  className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''} ${!canAfford ? 'disabled-card' : 'purchasable'}`}
+                  onClick={() => { if (canAfford) buyPokemon(index); }}
+                >
                   <div className="tier-ribbon">Tier {base.tier}</div>
                   <div className="shop-type-badges">
                     {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
@@ -165,7 +177,7 @@ function App() {
                     <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
                     <span title="Speed">Spd {base.stats.speed}</span><span title="HP">HP {base.stats.hp}</span>
                   </div>
-                  <button disabled={gold < cost} onClick={() => buyPokemon(index)} className="buy-btn">Buy ({cost} 🪙)</button>
+                  <button className="buy-btn">Buy ({cost} 🪙)</button>
                 </div>
               );
             })}
