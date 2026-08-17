@@ -3,7 +3,6 @@ import { create } from 'zustand';
 export type BaseStats = { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number; };
 export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; type: string; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; };
 
-// Compact 151 Database: [id, name, type, tier, hp, atk, def, spa, spd, spe]
 const RAW_DEX: (string | number)[][] = [
   [1,'Bulbasaur','grass',1,45,49,49,65,65,45],[2,'Ivysaur','grass',2,60,62,63,80,80,60],[3,'Venusaur','grass',3,80,82,83,100,100,80],
   [4,'Charmander','fire',1,39,52,43,60,50,65],[5,'Charmeleon','fire',2,58,64,58,80,65,80],[6,'Charizard','fire',3,78,84,78,109,85,100],
@@ -89,9 +88,8 @@ export const POKEMON_DB: Pokemon[] = RAW_DEX.map(p => ({ id: p[0].toString(), ba
 
 const NAMES: Record<number, string> = {}; POKEMON_DB.forEach(p => NAMES[p.baseId] = p.name);
 
-// Logic to automatically find evolutions (Next numeric ID if same type/line)
 const getEvo = (baseId: number, level: number) => {
-  if (baseId === 133) return level === 1 ? 134 : 135; // Eevee special case
+  if (baseId === 133) return level === 1 ? 134 : 135; 
   let e1 = baseId, e2 = baseId;
   const p1 = POKEMON_DB.find(p => p.baseId === baseId + 1);
   if (p1 && p1.tier > POKEMON_DB.find(p=>p.baseId===baseId)!.tier) {
@@ -114,16 +112,24 @@ const getMult = (a: string, d: string) => TYPES[a]?.[d] ?? 1;
 export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
 
 const MAX_STAGE = 20;
-const generateShop = (stage: number) => Array.from({ length: 5 }, () => {
-  const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151); // Mewtwo/Mew are rare
+
+// TFT Odds: Generates shop, heavily weighting Pokémon you already own
+const generateShop = (stage: number, currentTeam: Pokemon[] = []) => Array.from({ length: 5 }, () => {
+  const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151);
   if (stage >= 15 && Math.random() > 0.95) return POKEMON_DB.find(p => p.baseId === 150)!; 
-  return pool[Math.floor(Math.random() * pool.length)];
+
+  const teamBaseIds = new Set(currentTeam.map(p => p.baseId));
+  // Add 4 extra entries into the raffle for any Pokemon currently on your team
+  const biasedPool = pool.flatMap(p => teamBaseIds.has(p.baseId) ? [p, p, p, p, p] : [p]);
+  
+  return biasedPool[Math.floor(Math.random() * biasedPool.length)];
 });
 
+// Enemies do NOT get the biased pool
 const generateEnemies = (stage: number) => {
   if (stage === MAX_STAGE) return [{ ...POKEMON_DB.find(p=>p.baseId===150)!, id: 'boss', hp: 800, maxHp: 800, position: 0, status: 'idle' as const, copies: 9, star: 3 }];
   return Array.from({ length: Math.min(6, Math.ceil(stage / 3)) }, (_, i) => {
-    const base = generateShop(stage)[0];
+    const base = generateShop(stage, [])[0]; 
     const isStage2 = stage > 5 && Math.random() > 0.5;
     const dexId = isStage2 ? getEvo(base.baseId, 1)[0] : base.baseId;
     const scale = isStage2 ? 1.5 : 1 + (stage * 0.1);
@@ -139,18 +145,19 @@ interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  hasSelectedStarter: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1), gold: 12, stage: 1, isBattling: false, combatText: "",
+  hasSelectedStarter: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "",
 
   selectStarter: (id) => set({
     hasSelectedStarter: true,
     playerTeam: [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1 }],
-    gold: 12
+    gold: 12,
+    shopItems: generateShop(1, [{ ...POKEMON_DB.find(p=>p.baseId===id)!, id: 'p1', position: 0, status: 'idle', copies: 1, star: 1 } as Pokemon])
   }),
 
-  resetGame: () => set({ hasSelectedStarter: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1), gold: 12, stage: 1, isBattling: false, combatText: "" }),
+  resetGame: () => set({ hasSelectedStarter: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "" }),
 
   startBattle: () => set({ isBattling: true, combatText: "" }),
-  refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage) } : s),
+  refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
   
   swapSlots: (i1, i2) => set(s => {
     if (s.isBattling) return s;
@@ -201,7 +208,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (eTeam.every(e => e.hp <= 0)) {
       if (state.stage === MAX_STAGE) { alert("🏆 CHAMPION DEFEATED!"); set({ isBattling: false }); return; }
       const goldReward = 5 + state.stage; 
-      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), shopItems: generateShop(s.stage + 1), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
+      set(s => ({ enemyTeam: generateEnemies(s.stage + 1), playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), shopItems: generateShop(s.stage + 1, pTeam), gold: s.gold + goldReward, stage: s.stage + 1, isBattling: false, combatText: "" }));
     } else if (pTeam.every(p => p.hp <= 0)) {
       alert(`Run Lost to Stage ${state.stage}! Restarting...`); get().resetGame();
     }
