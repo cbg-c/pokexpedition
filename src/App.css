@@ -51,6 +51,23 @@ h1, h2, h3, .battle-btn, .buy-btn, .refresh-btn { font-family: 'Press Start 2P',
 .card-image-bg { background: rgba(255,255,255,0.6); border: 2px solid #333; display: flex; justify-content: center; margin-bottom: 10px; }
 .card-image-bg img { height: 70px; }
 .shop-card h3 { font-size: 0.6rem; text-align: center; margin: 0 0 10px; }
+.sold-out { 
+  background: #e0e0e0; 
+  border: 4px dashed #999; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  opacity: 0.6; 
+  box-shadow: none; 
+}
+.sold-out p { 
+  font-family: 'Press Start 2P', monospace; 
+  font-size: 0.8rem; 
+  color: #666; 
+  transform: rotate(-15deg); 
+  text-align: center;
+  line-height: 1.5;
+}
 
 /* Adjusted Stat Grid for Text */
 .card-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.55rem; font-family: sans-serif; font-weight: bold; margin-bottom: 10px; }
@@ -69,8 +86,19 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .enemy-sprite.attacking { animation: enemyAttackLunge 0.6s ease-in-out; }
 .sprite-container.damaged { animation: damagedFlash 0.5s; filter: brightness(2); }
 
-@keyframes idleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes attackLunge { 50% { transform: translate(50px, -20px) scale(1.1); } }
-@keyframes enemyAttackLunge { 50% { transform: translate(-50px, -20px) scale(1.1) scaleX(-1); } }
-@keyframes damagedFlash { 20%, 60% { opacity: 0; transform: translateX(-5px); } 40%, 80% { opacity: 1; transform: translateX(5px); } }
-@keyframes legendaryPulse { 50% { box-shadow: 0 0 20px #ffd700; } }
+@keyframes attackLunge { 
+  0%, 100% { transform: translate(0, 0); } 
+  25% { transform: translate(-10px, 0); } /* Wind up pullback */
+  50% { transform: translate(60px, -20px) scale(1.2); } /* The Strike */
+}
+@keyframes enemyAttackLunge { 
+  0%, 100% { transform: translate(0, 0); } 
+  25% { transform: translate(10px, 0) scaleX(-1); } 
+  50% { transform: translate(-60px, -20px) scale(1.2) scaleX(-1); } 
+}
+@keyframes damagedFlash { 
+  0%, 100% { filter: brightness(1); transform: translateX(0); } 
+  /* Violent red/white flashing and aggressive shaking */
+  10%, 50%, 90% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(-8px); } 
+  30%, 70% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(8px); } 
+}
