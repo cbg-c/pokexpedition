@@ -2,17 +2,34 @@ import { useEffect, useState } from 'react';
 import { useGameStore, getSpriteUrl } from './store';
 import './App.css';
 
-const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; isEnemy?: boolean; isActive?: boolean; isSelected?: boolean; onClick?: () => void }) => (
-  <div className={`party-slot ${isEnemy ? 'enemy-slot' : 'player-slot'} ${isActive ? 'active-fighter' : ''} ${isSelected ? 'selected' : ''}`} onClick={onClick}>
-    {p ? (
+const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; isEnemy?: boolean; isActive?: boolean; isSelected?: boolean; onClick?: () => void }) => {
+  if (!p) return <div className="party-slot empty-slot" />;
+
+  const starClass = p.star === 3 ? 'star-gold' : p.star === 2 ? 'star-silver' : 'star-bronze';
+  const targetCopies = p.star === 1 ? 3 : 9;
+
+  return (
+    <div className={`party-slot ${isEnemy ? 'enemy-slot' : 'player-slot'} ${isActive ? 'active-fighter' : ''} ${isSelected ? 'selected' : ''}`} onClick={onClick}>
       <div className={`sprite-container ${p.status}`}>
-        <div className="star-rating">⭐ {p.star === 3 ? 'MAX' : `${p.copies}/${p.star === 1 ? 5 : 10}`}</div>
+        <div className={`star-rating ${starClass}`}>
+          {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
+        </div>
         <img src={getSpriteUrl(p.pokedexId)} alt={p.name} className="pixel-sprite" />
         <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
+        
+        {/* Hover Tooltip Menu */}
+        <div className="pokemon-tooltip">
+          <h4>{p.name} <span className={`tooltip-type type-${p.type}`}>{p.type}</span></h4>
+          <div className="tooltip-stats">
+            <span>Atk {p.stats.attack}</span><span>Sp.A {p.stats.spAtk}</span>
+            <span>Def {p.stats.defense}</span><span>Sp.D {p.stats.spDef}</span>
+            <span>Spd {p.stats.speed}</span><span>HP {p.hp}/{p.maxHp}</span>
+          </div>
+        </div>
       </div>
-    ) : <div className="empty-slot" />}
-  </div>
-);
+    </div>
+  );
+};
 
 function App() {
   const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots } = useGameStore();
@@ -30,7 +47,6 @@ function App() {
     else { swapSlots(selectedSlot, pos); setSelectedSlot(null); }
   };
 
-  // Find who is currently fighting
   const activePlayer = playerTeam.slice().sort((a,b) => a.position - b.position).find(p => p.hp > 0);
   const activeEnemy = enemyTeam.slice().sort((a,b) => a.position - b.position).find(e => e.hp > 0);
 
@@ -47,10 +63,8 @@ function App() {
           <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
         </div>
 
-        {/* Combat Text Notification */}
         {combatText && <div className="combat-text">{combatText}</div>}
         
-        {/* 1D Party Layouts */}
         <div className="party-lines-container">
           <div className="party-line player-line">
             {[0,1,2,3,4,5].map(pos => {
@@ -58,7 +72,6 @@ function App() {
               return <PokemonSlot key={`p-${pos}`} p={p} isActive={p?.id === activePlayer?.id} isSelected={selectedSlot === pos} onClick={() => handleSlotClick(pos)} />;
             })}
           </div>
-
           <div className="party-line enemy-line">
             {[0,1,2,3,4,5].map(pos => {
               const e = enemyTeam.find(e => e.position === pos);
@@ -82,10 +95,10 @@ function App() {
         <div className="shop-cards">
           {shopItems.map((base, index) => {
             if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
-            // Lookup name since shop items only have base data
             const name = ['Bulbasaur','Charmander','Squirtle','Pidgey','Abra','Gastly','Dratini','Snorlax'].find(n => n.startsWith(base.type.charAt(0).toUpperCase())) || "Pokemon"; 
             return (
               <div key={`${base.id}-${index}`} className={`shop-card type-${base.type} tier-${base.tier}`}>
+                <div className="type-badge">{base.type.toUpperCase()}</div>
                 <div className="card-image-bg"><img src={getSpriteUrl(base.id)} alt={base.type} /></div>
                 <div className="card-stats-grid">
                   <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
