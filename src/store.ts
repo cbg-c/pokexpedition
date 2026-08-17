@@ -151,10 +151,17 @@ const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
   const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
-  const pool = POKEMON_DB.filter(p => p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && p.baseId !== 150 && p.baseId !== 151 && !maxedBaseIds.has(p.baseId));
+  
+  // RESTRICT TO BASE FORMS ONLY! Ensures Wild Charizards don't spawn early!
+  const pool = POKEMON_DB.filter(p => 
+    p.baseId === p.pokedexId && // <--- Crucial: Only base forms allowed
+    p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && 
+    p.baseId !== 150 && p.baseId !== 151 && 
+    !maxedBaseIds.has(p.baseId)
+  );
   if (pool.length === 0) return null;
 
-  const isShiny = allowShiny && Math.random() < 0.05; 
+  const isShiny = allowShiny && Math.random() < 0.015; // Reduced to 1.5%
 
   if (stage >= 15 && Math.random() > 0.95 && !maxedBaseIds.has(150)) return applyStageEvolution(POKEMON_DB.find(p => p.baseId === 150)!, stage, isShiny); 
   
@@ -178,7 +185,7 @@ interface GameState {
   hasSelectedStarter: boolean; isGameOver: boolean; playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (Pokemon | null)[];
   gold: number; stage: number; isBattling: boolean; combatText: string; shopFrozen: boolean;
   pokedex: Record<number, { seen: boolean, shiny: boolean }>; highScore: number;
-  selectStarter: (id: number) => void; startBattle: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void; toggleFreeze: () => void; registerPokedex: (dexId: number, isShiny: boolean) => void;
+  selectStarter: (id: number) => void; startBattle: () => void; skipCombat: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void; toggleFreeze: () => void; registerPokedex: (dexId: number, isShiny: boolean) => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -192,7 +199,7 @@ export const useGameStore = create<GameState>()(
       }),
 
       selectStarter: (id) => {
-        const isShiny = Math.random() < 0.05;
+        const isShiny = Math.random() < 0.015;
         get().registerPokedex(id, isShiny);
         set({
           hasSelectedStarter: true,
@@ -206,6 +213,52 @@ export const useGameStore = create<GameState>()(
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
       startBattle: () => set({ isBattling: true, combatText: "" }),
+      
+      skipCombat: () => {
+        const state = get();
+        if (!state.isBattling) return;
+        set({ isBattling: false }); // Kills the interval loop
+        
+        let pTeam = [...state.playerTeam].map(p => ({ ...p, status: 'idle' as const, lastDamageTaken: null }));
+        let eTeam = [...state.enemyTeam].map(e => ({ ...e, status: 'idle' as const, lastDamageTaken: null }));
+
+        while (pTeam.some(p => p.hp > 0) && eTeam.some(e => e.hp > 0)) {
+            const p1 = pTeam.find(p => p.hp > 0)!;
+            const e1 = eTeam.find(e => e.hp > 0)!;
+
+            const applyFastDmg = (atk: Pokemon, def: Pokemon) => {
+                if (def.hp <= 0) return;
+                const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
+                const isSp = atk.stats.spAtk > atk.stats.attack;
+                const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
+                def.hp = Math.max(0, def.hp - dmg);
+            };
+
+            if (p1.stats.speed >= e1.stats.speed) {
+                applyFastDmg(p1, e1);
+                if (e1.hp > 0) applyFastDmg(e1, p1);
+            } else {
+                applyFastDmg(e1, p1);
+                if (p1.hp > 0) applyFastDmg(p1, e1);
+            }
+        }
+
+        if (eTeam.every(e => e.hp <= 0)) {
+            if (state.stage === MAX_STAGE) { set({ isGameOver: true }); return; }
+            const goldReward = 5 + state.stage;
+            const nextStage = state.stage + 1;
+            const nextShop = state.shopFrozen ? state.shopItems : generateShop(nextStage, pTeam);
+            set(s => ({
+                enemyTeam: generateEnemies(nextStage),
+                playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })),
+                shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, combatText: "Skipped!", shopFrozen: false,
+                highScore: Math.max(s.highScore, nextStage)
+            }));
+        } else if (pTeam.every(p => p.hp <= 0)) {
+            set({ isGameOver: true, playerTeam: pTeam, enemyTeam: eTeam });
+        }
+      },
+
       refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
       
       swapSlots: (i1, i2) => set(s => {
@@ -236,9 +289,11 @@ export const useGameStore = create<GameState>()(
 
         set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
         await new Promise(r => setTimeout(r, 50));
+        if (!get().isBattling) return; // Prevent tick if skipped!
 
         let txt = "";
         const applyDmg = (atk: Pokemon, def: Pokemon) => {
+          if (def.hp <= 0) return; // Prevents hitting dead pokemon
           atk.status = 'attacking'; def.status = 'damaged';
           const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
           if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
@@ -252,6 +307,7 @@ export const useGameStore = create<GameState>()(
 
         set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
         await new Promise(r => setTimeout(r, 800));
+        if (!get().isBattling) return; 
 
         if (eTeam.every(e => e.hp <= 0)) {
           if (state.stage === MAX_STAGE) { set({ isBattling: false, isGameOver: true }); return; }
