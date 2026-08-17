@@ -2,21 +2,38 @@ import { useEffect, useState } from 'react';
 import { useGameStore, getSpriteUrl, getCost } from './store';
 import './App.css';
 
-const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; isEnemy?: boolean; isActive?: boolean; isSelected?: boolean; onClick?: () => void }) => {
+const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick, onSell }: { p: any; isEnemy?: boolean; isActive?: boolean; isSelected?: boolean; onClick?: () => void; onSell?: () => void }) => {
   if (!p) return <div className="party-slot empty-slot" />;
 
   const starClass = p.star === 3 ? 'star-gold' : p.star === 2 ? 'star-silver' : 'star-bronze';
   const targetCopies = p.star === 1 ? 3 : 9;
+  
+  // Calculate Sell Value
+  const totalCost = getCost(p.tier) * p.copies;
+  const sellValue = Math.max(1, Math.floor(totalCost * 0.7));
 
   return (
     <div className={`party-slot ${isEnemy ? 'enemy-slot' : 'player-slot'} ${isActive ? 'active-fighter' : ''} ${isSelected ? 'selected' : ''}`} onClick={onClick}>
       <div className={`sprite-container ${p.status}`}>
+        
+        {/* Floating Damage Animation */}
+        {p.lastDamageTaken != null && p.lastDamageTaken > 0 && (
+          <div className="damage-text">-{p.lastDamageTaken}</div>
+        )}
+
         <div className={`star-rating ${starClass}`}>
           {p.star === 3 ? '⭐ MAX' : `⭐ ${p.copies}/${targetCopies}`}
         </div>
         <img src={getSpriteUrl(p.pokedexId)} alt={p.name} className="pixel-sprite" />
         <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
         
+        {/* Sell Button (Only shows when selected) */}
+        {!isEnemy && isSelected && (
+          <button className="sell-btn" onClick={(e) => { e.stopPropagation(); onSell?.(); }}>
+            Sell ({sellValue}🪙)
+          </button>
+        )}
+
         {/* Hover Tooltip Menu */}
         <div className="pokemon-tooltip">
           <h4>{p.name} <span className={`tooltip-type bg-type-${p.type}`}>{p.type}</span></h4>
@@ -32,7 +49,7 @@ const PokemonSlot = ({ p, isEnemy, isActive, isSelected, onClick }: { p: any; is
 };
 
 function App() {
-  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame } = useGameStore();
+  const { playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   useEffect(() => {
@@ -44,7 +61,13 @@ function App() {
   const handleSlotClick = (pos: number) => {
     if (isBattling) return;
     if (selectedSlot === null) setSelectedSlot(pos);
+    else if (selectedSlot === pos) setSelectedSlot(null); // Deselect if clicked again
     else { swapSlots(selectedSlot, pos); setSelectedSlot(null); }
+  };
+
+  const handleSell = (pos: number) => {
+    sellPokemon(pos);
+    setSelectedSlot(null);
   };
 
   const activePlayer = playerTeam.slice().sort((a,b) => a.position - b.position).find(p => p.hp > 0);
@@ -72,7 +95,7 @@ function App() {
           <div className="party-line player-line">
             {[0,1,2,3,4,5].map(pos => {
               const p = playerTeam.find(p => p.position === pos);
-              return <PokemonSlot key={`p-${pos}`} p={p} isActive={p?.id === activePlayer?.id} isSelected={selectedSlot === pos} onClick={() => handleSlotClick(pos)} />;
+              return <PokemonSlot key={`p-${pos}`} p={p} isActive={p?.id === activePlayer?.id} isSelected={selectedSlot === pos} onClick={() => handleSlotClick(pos)} onSell={() => handleSell(pos)} />;
             })}
           </div>
           <div className="party-line enemy-line">
@@ -93,25 +116,32 @@ function App() {
       <footer className="pokemart">
         <div className="pokemart-header">
           <h2>POKÉMART <span className="gold-display">| Gold: {gold} 🪙</span></h2>
-          <button className="refresh-btn" onClick={refreshShop} disabled={gold < 2}>🔄 Refresh (2 🪙)</button>
         </div>
-        <div className="shop-cards">
-          {shopItems.map((base, index) => {
-            if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
-            const cost = getCost(base.tier);
-            return (
-              <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
-                <div className={`type-badge bg-type-${base.type}`}>{base.type.toUpperCase()}</div>
-                <div className="card-image-bg"><img src={getSpriteUrl(base.id)} alt={base.type} /></div>
-                <div className="card-stats-grid">
-                  <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
-                  <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
-                  <span title="Speed">Spd {base.stats.speed}</span><span title="HP">HP {base.stats.hp}</span>
+        
+        <div className="shop-layout">
+          <div className="shop-cards">
+            {shopItems.map((base, index) => {
+              if (!base) return <div key={`sold-${index}`} className="shop-card sold-out"><p>SOLD OUT</p></div>;
+              const cost = getCost(base.tier);
+              return (
+                <div key={`${base.id}-${index}`} className={`shop-card tier-${base.tier}`}>
+                  <div className={`type-badge bg-type-${base.type}`}>{base.type.toUpperCase()}</div>
+                  <div className="card-image-bg"><img src={getSpriteUrl(base.id)} alt={base.type} /></div>
+                  <div className="card-stats-grid">
+                    <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
+                    <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
+                    <span title="Speed">Spd {base.stats.speed}</span><span title="HP">HP {base.stats.hp}</span>
+                  </div>
+                  <button disabled={gold < cost} onClick={() => buyPokemon(index)} className="buy-btn">Buy ({cost} 🪙)</button>
                 </div>
-                <button disabled={gold < cost} onClick={() => buyPokemon(index)} className="buy-btn">Buy ({cost} 🪙)</button>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          
+          <button className="refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
+            <span style={{ fontSize: '2rem', marginBottom: '10px' }}>🔄</span>
+            Refresh<br/><br/>(2 🪙)
+          </button>
         </div>
       </footer>
     </div>
