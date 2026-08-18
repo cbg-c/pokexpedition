@@ -78,7 +78,7 @@ function App() {
 
   useEffect(() => {
     if (!isBattling) return;
-    const interval = setInterval(gameTick, isFastForwarding ? 200 : 1400); 
+    const interval = setInterval(gameTick, isFastForwarding ? 466 : 1400); 
     return () => clearInterval(interval);
   }, [isBattling, isFastForwarding, gameTick]);
 
@@ -253,22 +253,21 @@ function App() {
               return (
                 <div 
                   key={`${base.id}-${index}`} 
-                  className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''} ${!canAfford ? 'disabled-card' : 'purchasable'} ${base.isShiny ? 'shop-card-shiny' : ''}`}
+                  className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''} ${!canAfford ? 'disabled-card' : 'purchasable'}`}
                   onClick={() => { if (canAfford) buyPokemon(index); }}
                 >
+                  {/* Absolute Corner Badges */}
                   <div className="tier-ribbon">Tier {base.tier}</div>
-                  
-                  {isCaught && <div className="caught-icon" title="Caught" />}
-                  
                   <div className="shop-type-badges">
                     {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
                   </div>
                   
-                  {isOwned && <div className="upgrade-badge">UPGRADE!</div>}
-                  {base.isShiny && <div className="shiny-sparkle" style={{top: -5, left: 50}}>SHINY</div>}
+                  {isCaught && <div className="caught-icon" title="Caught" />}
                   
                   <h3 className="shop-pokemon-name">{base.name}</h3>
                   <div className="card-image-bg">
+                    {base.isShiny && <div className="shiny-sparkle-card">SHINY</div>}
+                    {isOwned && <div className="upgrade-badge">UPGRADE!</div>}
                     <SpriteDisplay id={base.pokedexId} isShiny={base.isShiny} />
                   </div>
                   <div className="card-stats-grid">
