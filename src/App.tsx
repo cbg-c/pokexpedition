@@ -71,16 +71,16 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, combatText, startBattle, skipCombat, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
+  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, isFastForwarding, combatText, startBattle, toggleFastForward, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [showPokedex, setShowPokedex] = useState<boolean>(false);
   const [dexView, setDexView] = useState<'normal' | 'shiny'>('normal');
 
   useEffect(() => {
     if (!isBattling) return;
-    const interval = setInterval(gameTick, 1400); 
+    const interval = setInterval(gameTick, isFastForwarding ? 200 : 1400); 
     return () => clearInterval(interval);
-  }, [isBattling, gameTick]);
+  }, [isBattling, isFastForwarding, gameTick]);
 
   if (!currentRegion) {
     return (
@@ -107,7 +107,7 @@ function App() {
   const activeEnemy = enemyTeam.slice().sort((a,b) => a.position - b.position).find(e => e.hp > 0);
 
   return (
-    <div className="game-wrapper">
+    <div className={`game-wrapper ${isFastForwarding ? 'fast-forward' : ''}`}>
       
       {showPokedex && (
         <div className="modal-overlay" onClick={() => setShowPokedex(false)}>
@@ -222,7 +222,7 @@ function App() {
 
         <div className="controls-overlay">
           {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">Start Expedition</button>}
-          {isBattling && <button onClick={skipCombat} className="battle-btn skip-btn">Skip Combat</button>}
+          {isBattling && <button onClick={toggleFastForward} className="battle-btn skip-btn">{isFastForwarding ? 'Fast Forwarding...' : 'Fast Forward'}</button>}
         </div>
       </main>
 
@@ -265,7 +265,7 @@ function App() {
                   </div>
                   
                   {isOwned && <div className="upgrade-badge">UPGRADE!</div>}
-                  {base.isShiny && <div className="shiny-sparkle" style={{top: -5, left: 40}}>SHINY</div>}
+                  {base.isShiny && <div className="shiny-sparkle" style={{top: -5, left: 50}}>SHINY</div>}
                   
                   <h3 className="shop-pokemon-name">{base.name}</h3>
                   <div className="card-image-bg">
@@ -282,12 +282,12 @@ function App() {
             })}
           </div>
           
-          <div className="action-buttons-row">
-            <button className={`freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
+          <div className="pokemart-actions">
+            <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
               <div className="custom-icon freeze-icon" />
               <span>{shopFrozen ? 'Frozen' : 'Freeze'}</span>
             </button>
-            <button className="refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
+            <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
               <div className="custom-icon refresh-icon" />
               <span>Refresh (2 <PokeCoin />)</span>
             </button>
