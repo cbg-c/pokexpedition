@@ -175,6 +175,9 @@ function App() {
           <button className="restart-btn" onClick={resetGame}>RESTART</button>
           <button className="pokedex-btn" onClick={() => setShowPokedex(true)}>POKEDEX</button>
           <button className="pokedex-btn alt-btn" onClick={returnToMenu}>MENU</button>
+          <button onClick={toggleFastForward} className={`header-ff-btn ${isFastForwarding ? 'active' : ''}`}>
+            Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
+          </button>
         </div>
         <div className="header-info">
           <button className="support-btn">Support</button>
@@ -182,12 +185,6 @@ function App() {
       </header>
 
       <main className="battle-area">
-        
-        {/* TOP LEFT BUTTON */}
-        <button onClick={toggleFastForward} className={`battle-btn skip-btn top-left-btn ${isFastForwarding ? 'active' : ''}`}>
-          Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
-        </button>
-
         <div className="stadium-art">
           <div className="stadium-line"></div>
           <div className="stadium-circle"><div className="stadium-inner-circle"></div></div>
