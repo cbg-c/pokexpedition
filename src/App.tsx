@@ -10,7 +10,7 @@ const SpriteDisplay = ({ id, isShiny, forceAnimated = false, noHover = false }: 
   return (
     <img 
       src={getSpriteUrl(id, isShiny, animated)} 
-      alt={`sprite-${id}`} 
+      alt="" 
       className="pixel-sprite" 
       draggable="false"
       onMouseEnter={() => setHover(true)}
@@ -199,6 +199,14 @@ function App() {
         
         <div className="battle-area-middle">
           <div className="party-lines-container">
+            <div className="field-labels-top">
+              <div className="player-label-group">
+                <h2 className="field-label">YOUR PARTY</h2>
+                <span className="rearrange-hint">(Drag to rearrange)</span>
+              </div>
+              <h2 className="field-label">OPPONENT</h2>
+            </div>
+            
             <div className="party-line player-line">
               {[0,1,2,3,4,5].map(pos => {
                 const p = playerTeam.find(p => p.position === pos);
@@ -216,14 +224,14 @@ function App() {
         </div>
 
         <div className="battle-area-bottom">
-          <h2 className="field-label player-label">YOUR PARTY <span className="rearrange-hint">(Drag to rearrange)</span></h2>
           <div className="massive-gold-display">Gold: {gold} <PokeCoin /></div>
-          <h2 className="field-label enemy-label">OPPONENT</h2>
         </div>
 
         <div className="controls-overlay">
           {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">Start Expedition</button>}
-          {isBattling && <button onClick={toggleFastForward} className="battle-btn skip-btn">{isFastForwarding ? 'Fast Forwarding...' : 'Fast Forward'}</button>}
+          <button onClick={toggleFastForward} className={`battle-btn skip-btn ${isFastForwarding ? 'active' : ''}`}>
+            Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
+          </button>
         </div>
       </main>
 
@@ -265,12 +273,14 @@ function App() {
                     </div>
                   </div>
                   
-                  <h3 className="shop-pokemon-name">{base.name}</h3>
                   <div className="card-image-bg">
                     {base.isShiny && <div className="shiny-sparkle-card">SHINY</div>}
                     {isOwned && <div className="upgrade-badge">UPGRADE!</div>}
                     <SpriteDisplay id={base.pokedexId} isShiny={base.isShiny} />
                   </div>
+
+                  <h3 className="shop-pokemon-name">{base.name}</h3>
+
                   <div className="card-stats-grid">
                     <span title="Attack">Atk {base.stats.attack}</span><span title="Sp. Atk">Sp.A {base.stats.spAtk}</span>
                     <span title="Defense">Def {base.stats.defense}</span><span title="Sp. Def">Sp.D {base.stats.spDef}</span>
@@ -284,16 +294,12 @@ function App() {
           
           <div className="pokemart-actions">
             <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
-              <div className="action-btn-text">
-                <div className="custom-icon freeze-icon" />
-                <span>FREEZE</span>
-              </div>
+              <div className="custom-icon freeze-icon" />
+              <span>FREEZE</span>
             </button>
             <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
-               <div className="action-btn-text">
-                <div className="custom-icon refresh-icon" />
-                <span>REFRESH (2 <PokeCoin />)</span>
-              </div>
+              <div className="custom-icon refresh-icon" />
+              <span>REFRESH (2 <PokeCoin />)</span>
             </button>
           </div>
         </div>
