@@ -1,9 +1,13 @@
+// State Management & Core Game Logic
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// --- Types ---
 export type BaseStats = { hp: number; attack: number; defense: number; spAtk: number; spDef: number; speed: number; };
 export type Pokemon = { id: string; baseId: number; pokedexId: number; name: string; types: string[]; tier: number; stats: BaseStats; hp: number; maxHp: number; position: number; status: 'idle' | 'attacking' | 'damaged'; copies: number; star: number; lastDamageTaken?: number | null; isShiny: boolean; };
 
+// --- Database (Minified for line reduction) ---
+// Format: [baseId, name, types, tier, hp, atk, def, spa, spd, spe]
 const RAW_DEX: (string | number)[][] = [
   [1,'Bulbasaur','grass,poison',1,45,49,49,65,65,45],[2,'Ivysaur','grass,poison',2,60,62,63,80,80,60],[3,'Venusaur','grass,poison',3,80,82,83,100,100,80],
   [4,'Charmander','fire',1,39,52,43,60,50,65],[5,'Charmeleon','fire',2,58,64,58,80,65,80],[6,'Charizard','fire,flying',3,78,84,78,109,85,100],
@@ -94,6 +98,7 @@ export const POKEMON_DB: Pokemon[] = RAW_DEX.map(p => ({
 
 const NAMES: Record<number, string> = {}; POKEMON_DB.forEach(p => NAMES[p.baseId] = p.name);
 
+// --- Evolution Logic ---
 export const THREE_STAGE_BASE_IDS = new Set([1, 4, 7, 10, 13, 16, 29, 32, 43, 60, 63, 66, 69, 74, 92, 147]);
 export const SINGLE_STAGE_BASE_IDS = new Set([83, 95, 106, 107, 108, 113, 114, 115, 122, 123, 124, 125, 126, 127, 128, 131, 132, 137, 142, 143, 144, 145, 146, 150, 151]);
 
@@ -140,7 +145,7 @@ const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokem
   };
 };
 
-// Comprehensive official Pokémon Type Effectiveness Chart
+// --- Type Effectiveness ---
 const TYPES: Record<string, Record<string, number>> = {
   normal: { rock: 0.5, ghost: 0, steel: 0.5 },
   fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
@@ -161,17 +166,17 @@ const TYPES: Record<string, Record<string, number>> = {
   dark: { fighting: 0.5, psychic: 2, ghost: 2, dark: 0.5, fairy: 0.5 },
   fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
 };
-
 const getMult = (atkType: string, defType: string) => TYPES[atkType]?.[defType] ?? 1;
+
 export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
 export const getSellValue = (tier: number, copies: number) => Math.max(1, Math.floor((getCost(tier) * copies) * 0.7));
 
 export const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos'];
 const MAX_STAGE = 20;
 
+// --- Generators ---
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
   const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= getMaxCopies(p.baseId)).map(p => p.baseId));
-  
   const pool = POKEMON_DB.filter(p => 
     p.baseId === p.pokedexId && 
     p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && 
@@ -200,6 +205,7 @@ const generateEnemies = (stage: number) => {
   });
 };
 
+// --- Zustand Store ---
 interface GameState {
   currentRegion: string | null; clearedRegions: string[];
   hasSelectedStarter: boolean; isGameOver: boolean; playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (Pokemon | null)[];
@@ -240,7 +246,6 @@ export const useGameStore = create<GameState>()(
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
       startBattle: () => set({ isBattling: true, combatText: "" }),
-      
       toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
 
       refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
@@ -274,28 +279,25 @@ export const useGameStore = create<GameState>()(
         set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
         
         const speedMult = get().isFastForwarding ? 0.33 : 1;
-        
         await new Promise(r => setTimeout(r, 50 * speedMult));
         if (!get().isBattling) return; 
 
         let txt = "";
         const applyDmg = (atk: Pokemon, def: Pokemon) => {
-          if (atk.hp <= 0 || def.hp <= 0) return; // Strict safety check: dead Pokémon never attack or take damage
+          if (def.hp <= 0 || atk.hp <= 0) return; // Strict safety check
           atk.status = 'attacking'; def.status = 'damaged';
           const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
           if (mult > 1) txt = "Super Effective!"; else if (mult < 1 && mult > 0) txt = "Not very effective..."; else if (mult === 0) txt = "No effect!"; else txt = "";
+          
           const isSp = atk.stats.spAtk > atk.stats.attack;
-          const dmg = Math.max(mult === 0 ? 0 : 1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
+          // Math.max(1, ...) ensures even immunities or highly defensive targets take at least 1 damage, preventing infinite loops
+          const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
+          
           def.hp = Math.max(0, def.hp - dmg); def.lastDamageTaken = dmg;
         };
 
-        if (p1.stats.speed >= e1.stats.speed) { 
-          applyDmg(p1, e1); 
-          if (e1.hp > 0) applyDmg(e1, p1); 
-        } else { 
-          applyDmg(e1, p1); 
-          if (p1.hp > 0) applyDmg(p1, e1); 
-        }
+        if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } 
+        else { applyDmg(e1, p1); if (p1.hp > 0) applyDmg(p1, e1); }
 
         set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
         await new Promise(r => setTimeout(r, 800 * speedMult));
