@@ -94,6 +94,11 @@ export const POKEMON_DB: Pokemon[] = RAW_DEX.map(p => ({
 
 const NAMES: Record<number, string> = {}; POKEMON_DB.forEach(p => NAMES[p.baseId] = p.name);
 
+export const THREE_STAGE_BASE_IDS = new Set([1, 4, 7, 10, 13, 16, 29, 32, 43, 60, 63, 66, 69, 74, 92, 147]);
+export const SINGLE_STAGE_BASE_IDS = new Set([83, 95, 106, 107, 108, 113, 114, 115, 122, 123, 124, 125, 126, 127, 128, 131, 132, 137, 142, 143, 144, 145, 146, 150, 151]);
+
+export const getMaxCopies = (baseId: number) => THREE_STAGE_BASE_IDS.has(baseId) ? 6 : 3;
+
 const getEvo = (baseId: number, level: number) => {
   if (baseId === 133) return level === 1 ? 134 : 135; 
   let e1 = baseId, e2 = baseId;
@@ -107,14 +112,24 @@ const getEvo = (baseId: number, level: number) => {
 };
 
 const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokemon => {
-  const evoLevel = stage >= 12 ? 2 : stage >= 9 ? 1 : 0;
-  if (evoLevel === 0) return { ...p, isShiny };
-  
-  const evos = getEvo(p.baseId, 1);
-  const dexId = evoLevel === 2 ? evos[1] : evos[0];
-  const star = evoLevel === 2 ? 3 : 2;
-  const copies = evoLevel === 2 ? 6 : 3;
-  const scale = star === 3 ? 2.5 : 1.5;
+  const is3Stage = THREE_STAGE_BASE_IDS.has(p.baseId);
+  const isSingle = SINGLE_STAGE_BASE_IDS.has(p.baseId);
+
+  let dexId = p.baseId;
+  let star = 1;
+  let copies = 1;
+  let scale = 1.0;
+
+  if (is3Stage) {
+    if (stage >= 12) { dexId = getEvo(p.baseId, 2)[1]; star = 3; copies = 6; scale = 2.5; }
+    else if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 2; copies = 3; scale = 1.5; }
+  } else if (isSingle) {
+    if (stage >= 12) { star = 3; copies = 3; scale = 2.5; }
+    else if (stage >= 9) { star = 2; copies = 2; scale = 1.5; }
+  } else {
+    // 2-stage line
+    if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 3; copies = 3; scale = 2.5; }
+  }
   
   return {
     ...p, pokedexId: dexId, name: NAMES[dexId] || p.name, star, copies, isShiny,
@@ -151,7 +166,8 @@ export const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos'];
 const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
-  const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
+  const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= getMaxCopies(p.baseId)).map(p => p.baseId));
+  
   const pool = POKEMON_DB.filter(p => 
     p.baseId === p.pokedexId && 
     p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && 
@@ -184,7 +200,7 @@ interface GameState {
   currentRegion: string | null; clearedRegions: string[];
   hasSelectedStarter: boolean; isGameOver: boolean; playerTeam: Pokemon[]; enemyTeam: Pokemon[]; shopItems: (Pokemon | null)[];
   gold: number; stage: number; isBattling: boolean; combatText: string; shopFrozen: boolean;
-  pokedex: Record<number, { seen: boolean, shiny: boolean }>; highScore: number;
+  pokedex: Record<number, { seen: boolean, shiny: boolean }>; highScores: Record<string, number>;
   isFastForwarding: boolean;
   setRegion: (r: string) => void; returnToMenu: () => void;
   selectStarter: (id: number) => void; startBattle: () => void; toggleFastForward: () => void; gameTick: () => Promise<void>; refreshShop: () => void; buyPokemon: (i: number) => void; swapSlots: (i1: number, i2: number) => void; resetGame: () => void; sellPokemon: (pos: number) => void; toggleFreeze: () => void; registerPokedex: (dexId: number, isShiny: boolean) => void;
@@ -194,7 +210,7 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       currentRegion: null, clearedRegions: [],
-      hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScore: 1,
+      hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScores: { Kanto: 1 },
       isFastForwarding: false,
 
       setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '', isFastForwarding: false }),
@@ -220,7 +236,6 @@ export const useGameStore = create<GameState>()(
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
       startBattle: () => set({ isBattling: true, combatText: "", isFastForwarding: false }),
-      
       toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
 
       refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
@@ -253,7 +268,6 @@ export const useGameStore = create<GameState>()(
 
         set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
         
-        // Exactly 3x Faster Math Speed
         const speedMult = get().isFastForwarding ? 0.33 : 1;
         
         await new Promise(r => setTimeout(r, 50 * speedMult));
@@ -278,10 +292,14 @@ export const useGameStore = create<GameState>()(
         if (!get().isBattling) return; 
 
         if (eTeam.every(e => e.hp <= 0)) {
+          const curReg = state.currentRegion || 'Kanto';
+          const updatedHigh = Math.max(state.highScores?.[curReg] || 1, state.stage);
+          const newHighScores = { ...state.highScores, [curReg]: updatedHigh };
+
           if (state.stage === MAX_STAGE) { 
             const nextCleared = [...state.clearedRegions];
             if (state.currentRegion && !nextCleared.includes(state.currentRegion)) nextCleared.push(state.currentRegion);
-            set({ isBattling: false, isGameOver: true, isFastForwarding: false, clearedRegions: nextCleared }); 
+            set({ isBattling: false, isGameOver: true, isFastForwarding: false, clearedRegions: nextCleared, highScores: newHighScores }); 
             return; 
           }
           const goldReward = 5 + state.stage; 
@@ -291,7 +309,7 @@ export const useGameStore = create<GameState>()(
             enemyTeam: generateEnemies(nextStage), 
             playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), 
             shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, isFastForwarding: false, combatText: "", shopFrozen: false,
-            highScore: Math.max(s.highScore, nextStage)
+            highScores: { ...s.highScores, [curReg]: Math.max(s.highScores?.[curReg] || 1, nextStage) }
           }));
         } else if (pTeam.every(p => p.hp <= 0)) {
           set({ isBattling: false, isGameOver: true, isFastForwarding: false });
@@ -304,25 +322,45 @@ export const useGameStore = create<GameState>()(
         
         const existing = s.playerTeam.find(p => p.baseId === base.baseId);
         const newShop = [...s.shopItems]; newShop[index] = null;
+        const maxCopies = getMaxCopies(base.baseId);
 
         if (existing) {
-          if (existing.copies >= 6) return s; 
+          if (existing.copies >= maxCopies) return s; 
           const pTeam = s.playerTeam.map(p => {
             if (p.id === existing.id) {
-              const copies = Math.min(6, p.copies + base.copies);
-              let star = p.star, dexId = p.pokedexId;
+              const copies = Math.min(maxCopies, p.copies + base.copies);
+              let star = 1;
+              let dexId = p.baseId;
+              const is3Stage = THREE_STAGE_BASE_IDS.has(p.baseId);
+              const isSingle = SINGLE_STAGE_BASE_IDS.has(p.baseId);
               const evos = getEvo(p.baseId, 1);
-              if (copies >= 3 && copies < 6) { star = 2; dexId = evos[0]; } 
-              if (copies >= 6) { star = 3; dexId = evos[1]; } 
+
+              if (is3Stage) {
+                if (copies >= 6) { star = 3; dexId = evos[1]; }
+                else if (copies >= 3) { star = 2; dexId = evos[0]; }
+              } else if (isSingle) {
+                if (copies >= 3) { star = 3; }
+                else if (copies >= 2) { star = 2; }
+              } else {
+                // 2-stage line
+                if (copies >= 3) { star = 3; dexId = evos[0]; }
+              }
               
               const isShiny = p.isShiny || base.isShiny; 
               get().registerPokedex(dexId, isShiny);
 
-              const baseDbStats = POKEMON_DB.find(b => b.baseId === p.baseId)!.stats;
-              const baseDbHp = POKEMON_DB.find(b => b.baseId === p.baseId)!.hp;
+              const baseDb = POKEMON_DB.find(b => b.baseId === p.baseId)!;
               const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
               
-              return { ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, isShiny, maxHp: Math.floor(baseDbHp * scale), hp: Math.floor(baseDbHp * scale), stats: { attack: Math.floor(baseDbStats.attack*scale), defense: Math.floor(baseDbStats.defense*scale), spAtk: Math.floor(baseDbStats.spAtk*scale), spDef: Math.floor(baseDbStats.spDef*scale), speed: Math.floor(baseDbStats.speed*scale) } };
+              return { 
+                ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, isShiny, 
+                maxHp: Math.floor(baseDb.hp * scale), hp: Math.floor(baseDb.hp * scale), 
+                stats: { 
+                  attack: Math.floor(baseDb.stats.attack * scale), defense: Math.floor(baseDb.stats.defense * scale), 
+                  spAtk: Math.floor(baseDb.stats.spAtk * scale), spDef: Math.floor(baseDb.stats.spDef * scale), 
+                  speed: Math.floor(baseDb.stats.speed * scale) 
+                } 
+              };
             }
             return p;
           });
@@ -337,7 +375,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'kanto-expeditions-storage',
-      partialize: (state) => ({ pokedex: state.pokedex, highScore: state.highScore, clearedRegions: state.clearedRegions })
+      partialize: (state) => ({ pokedex: state.pokedex, highScores: state.highScores, clearedRegions: state.clearedRegions })
     }
   )
 );
