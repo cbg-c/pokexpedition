@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS } from './store';
+import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS, getMaxCopies } from './store';
 import './App.css';
 
 const PokeCoin = () => <div className="pokecoin" title="Pokecoin" />;
@@ -21,7 +21,7 @@ const SpriteDisplay = ({ id, isShiny, forceAnimated = false, noHover = false }: 
 
 const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: number; p: any; isEnemy?: boolean; isActive?: boolean; onDragStart?: (p: Pokemon) => void; onDrop?: (pos: number) => void }) => {
   const starClass = p?.star === 3 ? 'star-gold' : p?.star === 2 ? 'star-silver' : 'star-bronze';
-  const targetCopies = p?.star === 1 ? 3 : 6;
+  const maxCopies = p ? getMaxCopies(p.baseId) : 3;
   const sellValue = p ? getSellValue(p.tier, p.copies) : 0;
 
   return (
@@ -37,7 +37,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
           {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
           
           <div className={`star-rating ${starClass}`}>
-            {p.star === 3 ? '★ MAX' : `★ ${p.copies}/${targetCopies}`}
+            {p.star === 3 || p.copies >= maxCopies ? '★ MAX' : `★ Lv. ${p.copies}/${maxCopies}`}
           </div>
 
           <div className="field-type-badges">
@@ -71,7 +71,7 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, isFastForwarding, combatText, startBattle, toggleFastForward, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScore } = useGameStore();
+  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, isFastForwarding, combatText, startBattle, toggleFastForward, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScores } = useGameStore();
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [showPokedex, setShowPokedex] = useState<boolean>(false);
   const [dexView, setDexView] = useState<'normal' | 'shiny'>('normal');
@@ -93,6 +93,7 @@ function App() {
               return (
                 <div key={r} className={`region-card ${!isUnlocked ? 'locked' : ''}`} onClick={() => isUnlocked && setRegion(r)}>
                   <h2>{r}</h2>
+                  <div className="region-best-text">Best: Stage {highScores[r] || 1} / 20</div>
                   {!isUnlocked && <span className="locked-text">(LOCKED)</span>}
                 </div>
               );
@@ -105,6 +106,7 @@ function App() {
 
   const activePlayer = playerTeam.slice().sort((a,b) => a.position - b.position).find(p => p.hp > 0);
   const activeEnemy = enemyTeam.slice().sort((a,b) => a.position - b.position).find(e => e.hp > 0);
+  const currentBest = highScores[currentRegion] || 1;
 
   return (
     <div className={`game-wrapper ${isFastForwarding ? 'fast-forward' : ''}`}>
@@ -189,7 +191,7 @@ function App() {
         <div className="battle-area-top">
           <div className="stage-tracker">
             <h3>Stage {stage} / 20 {stage === 20 && "[ ELITE FOUR ]"}</h3>
-            <div className="high-score-text">Furthest Reached: Stage {highScore}</div>
+            <div className="high-score-text">Furthest Reached: Stage {currentBest}</div>
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${(stage / 20) * 100}%` }} /></div>
           </div>
         </div>
@@ -256,13 +258,14 @@ function App() {
                   className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''} ${!canAfford ? 'disabled-card' : 'purchasable'}`}
                   onClick={() => { if (canAfford) buyPokemon(index); }}
                 >
-                  {/* Absolute Corner Badges */}
-                  <div className="tier-ribbon">Tier {base.tier}</div>
-                  <div className="shop-type-badges">
-                    {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
+                  {/* Clean Contained Header (No Overlap) */}
+                  <div className="shop-card-header">
+                    <div className="tier-ribbon">Tier {base.tier}</div>
+                    {isCaught && <div className="caught-icon" title="Caught" />}
+                    <div className="shop-type-badges">
+                      {base.types.map((t: string) => <div key={t} className={`type-badge bg-type-${t}`}>{t.toUpperCase()}</div>)}
+                    </div>
                   </div>
-                  
-                  {isCaught && <div className="caught-icon" title="Caught" />}
                   
                   <h3 className="shop-pokemon-name">{base.name}</h3>
                   <div className="card-image-bg">
