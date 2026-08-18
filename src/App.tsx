@@ -33,38 +33,37 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
       onDrop={(e) => { e.preventDefault(); if (!isEnemy && onDrop) onDrop(pos); }}
     >
       {p && (
-        <div className={`sprite-container ${p.status}`}>
-          {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
-          
+        <>
           <div className={`star-rating ${starClass}`}>
-            {p.star === 3 || p.copies >= maxCopies ? '★ MAX' : `★ Lv. ${p.copies}/${maxCopies}`}
+            ★ {p.star === 3 || p.copies >= maxCopies ? 'Lv. MAX' : `Lv. ${p.copies}/${maxCopies}`}
           </div>
-
           <div className="field-type-badges">
             {p.types.map((t: string) => (
               <div key={t} className={`field-type-badge bg-type-${t}`}>{t.substring(0, 3).toUpperCase()}</div>
             ))}
           </div>
-          
-          {p.isShiny && <div className="shiny-sparkle">SHINY</div>}
-          
-          <SpriteDisplay id={p.pokedexId} isShiny={p.isShiny} forceAnimated={true} />
-          
-          <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
 
-          <div className="pokemon-tooltip">
-            <h4>{p.name}</h4>
-            <div className="tooltip-types">
-              {p.types.map((t: string) => <span key={t} className={`tooltip-type bg-type-${t}`}>{t}</span>)}
+          <div className={`sprite-container ${p.status}`}>
+            {p.lastDamageTaken != null && p.lastDamageTaken > 0 && <div className="damage-text">-{p.lastDamageTaken}</div>}
+            {p.isShiny && <div className="shiny-sparkle">SHINY</div>}
+            
+            <SpriteDisplay id={p.pokedexId} isShiny={p.isShiny} forceAnimated={true} />
+            <div className="hp-bar-bg"><div className="hp-bar-fill" style={{ width: `${Math.max(0, (p.hp / p.maxHp) * 100)}%` }} /></div>
+
+            <div className="pokemon-tooltip">
+              <h4>{p.name}</h4>
+              <div className="tooltip-types">
+                {p.types.map((t: string) => <span key={t} className={`tooltip-type bg-type-${t}`}>{t}</span>)}
+              </div>
+              <div className="tooltip-stats">
+                <span>Atk {p.stats.attack}</span><span>Sp.A {p.stats.spAtk}</span>
+                <span>Def {p.stats.defense}</span><span>Sp.D {p.stats.spDef}</span>
+                <span>Spd {p.stats.speed}</span><span>HP {p.hp}/{p.maxHp}</span>
+              </div>
+              {!isEnemy && <div className="tooltip-sell">Sell Value: {sellValue} <PokeCoin /></div>}
             </div>
-            <div className="tooltip-stats">
-              <span>Atk {p.stats.attack}</span><span>Sp.A {p.stats.spAtk}</span>
-              <span>Def {p.stats.defense}</span><span>Sp.D {p.stats.spDef}</span>
-              <span>Spd {p.stats.speed}</span><span>HP {p.hp}/{p.maxHp}</span>
-            </div>
-            {!isEnemy && <div className="tooltip-sell">Sell Value: {sellValue} <PokeCoin /></div>}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -173,9 +172,9 @@ function App() {
       <header className="main-header">
         <div className="title-group">
           <h1>{currentRegion} Expeditions</h1>
-          <button className="restart-btn" onClick={resetGame}>Restart</button>
-          <button className="pokedex-btn" onClick={() => setShowPokedex(true)}>Pokedex</button>
-          <button className="pokedex-btn alt-btn" onClick={returnToMenu}>Menu</button>
+          <button className="restart-btn" onClick={resetGame}>RESTART</button>
+          <button className="pokedex-btn" onClick={() => setShowPokedex(true)}>POKEDEX</button>
+          <button className="pokedex-btn alt-btn" onClick={returnToMenu}>MENU</button>
         </div>
         <div className="header-info">
           <button className="support-btn">Support</button>
@@ -217,7 +216,7 @@ function App() {
         </div>
 
         <div className="battle-area-bottom">
-          <h2 className="field-label player-label">YOUR PARTY</h2>
+          <h2 className="field-label player-label">YOUR PARTY <span className="rearrange-hint">(Drag to rearrange)</span></h2>
           <div className="massive-gold-display">Gold: {gold} <PokeCoin /></div>
           <h2 className="field-label enemy-label">OPPONENT</h2>
         </div>
@@ -258,7 +257,6 @@ function App() {
                   className={`shop-card tier-${base.tier} ${isOwned ? 'shop-card-owned' : ''} ${!canAfford ? 'disabled-card' : 'purchasable'}`}
                   onClick={() => { if (canAfford) buyPokemon(index); }}
                 >
-                  {/* Clean Contained Header (No Overlap) */}
                   <div className="shop-card-header">
                     <div className="tier-ribbon">Tier {base.tier}</div>
                     {isCaught && <div className="caught-icon" title="Caught" />}
@@ -286,12 +284,16 @@ function App() {
           
           <div className="pokemart-actions">
             <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
-              <div className="custom-icon freeze-icon" />
-              <span>{shopFrozen ? 'Frozen' : 'Freeze'}</span>
+              <div className="action-btn-text">
+                <div className="custom-icon freeze-icon" />
+                <span>FREEZE</span>
+              </div>
             </button>
             <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
-              <div className="custom-icon refresh-icon" />
-              <span>Refresh (2 <PokeCoin />)</span>
+               <div className="action-btn-text">
+                <div className="custom-icon refresh-icon" />
+                <span>REFRESH (2 <PokeCoin />)</span>
+              </div>
             </button>
           </div>
         </div>
