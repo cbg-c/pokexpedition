@@ -121,13 +121,13 @@ const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokem
   let scale = 1.0;
 
   if (is3Stage) {
-    if (stage >= 12) { dexId = getEvo(p.baseId, 2)[1]; star = 3; copies = 6; scale = 2.5; }
+    if (stage >= 12) { dexId = getEvo(p.baseId, 2)[1]; star = 3; copies = 6; scale = 2.8; }
     else if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 2; copies = 3; scale = 1.5; }
   } else if (isSingle) {
-    if (stage >= 12) { star = 3; copies = 3; scale = 2.5; }
+    if (stage >= 12) { star = 3; copies = 3; scale = 2.8; }
     else if (stage >= 9) { star = 2; copies = 2; scale = 1.5; }
   } else {
-    if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 3; copies = 3; scale = 2.5; }
+    if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 3; copies = 3; scale = 2.8; }
   }
   
   return {
@@ -212,7 +212,7 @@ export const useGameStore = create<GameState>()(
       hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScores: { Kanto: 1 },
       isFastForwarding: false,
 
-      setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '' }),
+      setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '', isFastForwarding: false }),
       returnToMenu: () => set({ currentRegion: null }),
 
       registerPokedex: (dexId, isShiny) => set(s => {
@@ -231,10 +231,10 @@ export const useGameStore = create<GameState>()(
         });
       },
 
-      resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false }),
+      resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, isFastForwarding: false }),
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
-      startBattle: () => set({ isBattling: true, combatText: "" }),
+      startBattle: () => set({ isBattling: true, combatText: "", isFastForwarding: false }),
       
       toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
 
@@ -299,7 +299,7 @@ export const useGameStore = create<GameState>()(
           if (state.stage === MAX_STAGE) { 
             const nextCleared = [...state.clearedRegions];
             if (state.currentRegion && !nextCleared.includes(state.currentRegion)) nextCleared.push(state.currentRegion);
-            set({ isBattling: false, isGameOver: true, clearedRegions: nextCleared, highScores: newHighScores }); 
+            set({ isBattling: false, isGameOver: true, isFastForwarding: false, clearedRegions: nextCleared, highScores: newHighScores }); 
             return; 
           }
           const goldReward = 5 + state.stage; 
@@ -308,11 +308,11 @@ export const useGameStore = create<GameState>()(
           set(s => ({ 
             enemyTeam: generateEnemies(nextStage), 
             playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), 
-            shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, combatText: "", shopFrozen: false,
+            shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, isFastForwarding: false, combatText: "", shopFrozen: false,
             highScores: { ...s.highScores, [curReg]: Math.max(s.highScores?.[curReg] || 1, nextStage) }
           }));
         } else if (pTeam.every(p => p.hp <= 0)) {
-          set({ isBattling: false, isGameOver: true });
+          set({ isBattling: false, isGameOver: true, isFastForwarding: false });
         }
       },
 
@@ -349,7 +349,7 @@ export const useGameStore = create<GameState>()(
               get().registerPokedex(dexId, isShiny);
 
               const baseDb = POKEMON_DB.find(b => b.baseId === p.baseId)!;
-              const scale = star === 3 ? 2.5 : star === 2 ? 1.5 : 1;
+              const scale = star === 3 ? 2.8 : star === 2 ? 1.5 : 1;
               
               return { 
                 ...p, copies, star, pokedexId: dexId, name: NAMES[dexId] || p.name, isShiny, 
