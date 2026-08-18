@@ -182,6 +182,12 @@ function App() {
       </header>
 
       <main className="battle-area">
+        
+        {/* TOP LEFT BUTTON */}
+        <button onClick={toggleFastForward} className={`battle-btn skip-btn top-left-btn ${isFastForwarding ? 'active' : ''}`}>
+          Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
+        </button>
+
         <div className="stadium-art">
           <div className="stadium-line"></div>
           <div className="stadium-circle"><div className="stadium-inner-circle"></div></div>
@@ -199,15 +205,11 @@ function App() {
         
         <div className="battle-area-middle">
           <div className="party-lines-container">
-            <div className="field-labels-top">
-              <div className="player-label-group">
+            <div className="party-line player-line">
+              <div className="party-header">
                 <h2 className="field-label">YOUR PARTY</h2>
                 <span className="rearrange-hint">(Drag to rearrange)</span>
               </div>
-              <h2 className="field-label">OPPONENT</h2>
-            </div>
-            
-            <div className="party-line player-line">
               {[0,1,2,3,4,5].map(pos => {
                 const p = playerTeam.find(p => p.position === pos);
                 return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} 
@@ -215,6 +217,9 @@ function App() {
               })}
             </div>
             <div className="party-line enemy-line">
+              <div className="party-header">
+                <h2 className="field-label">OPPONENT</h2>
+              </div>
               {[0,1,2,3,4,5].map(pos => {
                 const e = enemyTeam.find(e => e.position === pos);
                 return <PokemonSlot key={`e-${pos}`} pos={pos} p={e} isEnemy isActive={e?.id === activeEnemy?.id} />;
@@ -228,10 +233,7 @@ function App() {
         </div>
 
         <div className="controls-overlay">
-          {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn">Start Expedition</button>}
-          <button onClick={toggleFastForward} className={`battle-btn skip-btn ${isFastForwarding ? 'active' : ''}`}>
-            Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
-          </button>
+          {!isBattling && playerTeam.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn start-btn">Start Expedition</button>}
         </div>
       </main>
 
@@ -294,12 +296,16 @@ function App() {
           
           <div className="pokemart-actions">
             <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}>
-              <div className="custom-icon freeze-icon" />
-              <span>FREEZE</span>
+              <div className="action-btn-text">
+                <div className="custom-icon freeze-icon" />
+                <span>FREEZE</span>
+              </div>
             </button>
             <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}>
-              <div className="custom-icon refresh-icon" />
-              <span>REFRESH (2 <PokeCoin />)</span>
+               <div className="action-btn-text">
+                <div className="custom-icon refresh-icon" />
+                <span>REFRESH (2 <PokeCoin />)</span>
+              </div>
             </button>
           </div>
         </div>
