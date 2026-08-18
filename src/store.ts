@@ -127,7 +127,6 @@ const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokem
     if (stage >= 12) { star = 3; copies = 3; scale = 2.5; }
     else if (stage >= 9) { star = 2; copies = 2; scale = 1.5; }
   } else {
-    // 2-stage line
     if (stage >= 9) { dexId = getEvo(p.baseId, 1)[0]; star = 3; copies = 3; scale = 2.5; }
   }
   
@@ -342,7 +341,6 @@ export const useGameStore = create<GameState>()(
                 if (copies >= 3) { star = 3; }
                 else if (copies >= 2) { star = 2; }
               } else {
-                // 2-stage line
                 if (copies >= 3) { star = 3; dexId = evos[0]; }
               }
               
