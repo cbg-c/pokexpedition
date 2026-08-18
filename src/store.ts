@@ -152,7 +152,6 @@ const MAX_STAGE = 20;
 
 const generateShop = (stage: number, currentTeam: Pokemon[] = [], allowShiny: boolean = true) => Array.from({ length: 5 }, () => {
   const maxedBaseIds = new Set(currentTeam.filter(p => p.copies >= 6).map(p => p.baseId));
-  
   const pool = POKEMON_DB.filter(p => 
     p.baseId === p.pokedexId && 
     p.tier <= (stage >= 10 ? 4 : stage >= 5 ? 3 : stage >= 2 ? 2 : 1) && 
@@ -221,8 +220,9 @@ export const useGameStore = create<GameState>()(
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
       startBattle: () => set({ isBattling: true, combatText: "", isFastForwarding: false }),
-      toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
       
+      toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
+
       refreshShop: () => set(s => s.gold >= 2 ? { gold: s.gold - 2, shopItems: generateShop(s.stage, s.playerTeam) } : s),
       
       swapSlots: (i1, i2) => set(s => {
@@ -253,7 +253,8 @@ export const useGameStore = create<GameState>()(
 
         set({ playerTeam: pTeam.map(p => ({ ...p, status: 'idle', lastDamageTaken: null })), enemyTeam: eTeam.map(e => ({ ...e, status: 'idle', lastDamageTaken: null })) });
         
-        const speedMult = get().isFastForwarding ? 0.15 : 1;
+        // Exactly 3x Faster Math Speed
+        const speedMult = get().isFastForwarding ? 0.33 : 1;
         
         await new Promise(r => setTimeout(r, 50 * speedMult));
         if (!get().isBattling) return; 
