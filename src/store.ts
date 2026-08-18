@@ -140,23 +140,28 @@ const applyStageEvolution = (p: Pokemon, stage: number, isShiny: boolean): Pokem
   };
 };
 
+// Comprehensive official Pokémon Type Effectiveness Chart
 const TYPES: Record<string, Record<string, number>> = {
-  fire: { grass: 2, water: 0.5, fire: 0.5, dragon: 0.5, rock: 0.5, bug: 2, ice: 2, steel: 2 }, 
-  water: { fire: 2, grass: 0.5, water: 0.5, dragon: 0.5, rock: 2, ground: 2 },
-  grass: { water: 2, fire: 0.5, grass: 0.5, dragon: 0.5, ground: 2, rock: 2, bug: 0.5, poison: 0.5, flying: 0.5, steel: 0.5 }, 
-  psychic: { psychic: 0.5, fighting: 2, poison: 2, steel: 0.5 }, 
-  ghost: { psychic: 2, ghost: 2, normal: 0 }, 
-  normal: { ghost: 0, rock: 0.5, steel: 0.5 }, 
-  dragon: { dragon: 2, steel: 0.5 }, 
-  electric: { water: 2, ground: 0, grass: 0.5, dragon: 0.5, flying: 2 },
-  ground: { fire: 2, electric: 2, grass: 0.5, bug: 0.5, rock: 2, poison: 2, flying: 0, steel: 2 }, 
-  rock: { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 },
-  bug: { grass: 2, psychic: 2, fire: 0.5, fighting: 0.5, flying: 0.5, ghost: 0.5, poison: 0.5, steel: 0.5 }, 
-  poison: { grass: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0 },
-  fighting: { normal: 2, rock: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, ice: 2, steel: 2 },
-  ice: { grass: 2, ground: 2, flying: 2, dragon: 2, fire: 0.5, water: 0.5, ice: 0.5, steel: 0.5 },
-  flying: { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 }
+  normal: { rock: 0.5, ghost: 0, steel: 0.5 },
+  fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
+  water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
+  electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 },
+  grass: { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 },
+  ice: { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 },
+  fighting: { normal: 2, ice: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, rock: 2, ghost: 0, dark: 2, steel: 2, fairy: 0.5 },
+  poison: { grass: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0, fairy: 2 },
+  ground: { fire: 2, electric: 2, grass: 0.5, poison: 2, flying: 0, bug: 0.5, rock: 2, steel: 2 },
+  flying: { electric: 0.5, grass: 2, fighting: 2, bug: 2, rock: 0.5, steel: 0.5 },
+  psychic: { fighting: 2, poison: 2, psychic: 0.5, dark: 0, steel: 0.5 },
+  bug: { fire: 0.5, grass: 2, fighting: 0.5, poison: 0.5, flying: 0.5, psychic: 2, ghost: 0.5, steel: 0.5, fairy: 0.5 },
+  rock: { fire: 2, ice: 2, fighting: 0.5, ground: 0.5, flying: 2, bug: 2, steel: 0.5 },
+  ghost: { normal: 0, psychic: 2, ghost: 2, dark: 0.5 },
+  dragon: { dragon: 2, steel: 0.5, fairy: 0 },
+  steel: { fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5, fairy: 2 },
+  dark: { fighting: 0.5, psychic: 2, ghost: 2, dark: 0.5, fairy: 0.5 },
+  fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
 };
+
 const getMult = (atkType: string, defType: string) => TYPES[atkType]?.[defType] ?? 1;
 export const getCost = (tier: number) => tier === 4 ? 12 : tier === 3 ? 8 : tier === 2 ? 5 : 3;
 export const getSellValue = (tier: number, copies: number) => Math.max(1, Math.floor((getCost(tier) * copies) * 0.7));
@@ -212,7 +217,7 @@ export const useGameStore = create<GameState>()(
       hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, pokedex: {}, highScores: { Kanto: 1 },
       isFastForwarding: false,
 
-      setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '', isFastForwarding: false }),
+      setRegion: (r) => set({ currentRegion: r, hasSelectedStarter: false, isGameOver: false, gold: 12, stage: 1, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), shopFrozen: false, combatText: '' }),
       returnToMenu: () => set({ currentRegion: null }),
 
       registerPokedex: (dexId, isShiny) => set(s => {
@@ -231,10 +236,10 @@ export const useGameStore = create<GameState>()(
         });
       },
 
-      resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false, isFastForwarding: false }),
+      resetGame: () => set({ hasSelectedStarter: false, isGameOver: false, playerTeam: [], enemyTeam: generateEnemies(1), shopItems: generateShop(1, []), gold: 12, stage: 1, isBattling: false, combatText: "", shopFrozen: false }),
 
       toggleFreeze: () => set(s => ({ shopFrozen: !s.shopFrozen })),
-      startBattle: () => set({ isBattling: true, combatText: "", isFastForwarding: false }),
+      startBattle: () => set({ isBattling: true, combatText: "" }),
       
       toggleFastForward: () => set(s => ({ isFastForwarding: !s.isFastForwarding })),
 
@@ -275,17 +280,22 @@ export const useGameStore = create<GameState>()(
 
         let txt = "";
         const applyDmg = (atk: Pokemon, def: Pokemon) => {
-          if (def.hp <= 0) return; 
+          if (atk.hp <= 0 || def.hp <= 0) return; // Strict safety check: dead Pokémon never attack or take damage
           atk.status = 'attacking'; def.status = 'damaged';
           const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
-          if (mult > 1) txt = "Super Effective!"; else if (mult < 1) txt = "Not very effective..."; else txt = "";
+          if (mult > 1) txt = "Super Effective!"; else if (mult < 1 && mult > 0) txt = "Not very effective..."; else if (mult === 0) txt = "No effect!"; else txt = "";
           const isSp = atk.stats.spAtk > atk.stats.attack;
-          const dmg = Math.max(1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
+          const dmg = Math.max(mult === 0 ? 0 : 1, (((isSp ? atk.stats.spAtk : atk.stats.attack) - ((isSp ? def.stats.spDef : def.stats.defense) * 0.4)) * mult) | 0);
           def.hp = Math.max(0, def.hp - dmg); def.lastDamageTaken = dmg;
         };
 
-        if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } 
-        else { applyDmg(e1, p1); if (p1.hp > 0) applyDmg(p1, e1); }
+        if (p1.stats.speed >= e1.stats.speed) { 
+          applyDmg(p1, e1); 
+          if (e1.hp > 0) applyDmg(e1, p1); 
+        } else { 
+          applyDmg(e1, p1); 
+          if (p1.hp > 0) applyDmg(p1, e1); 
+        }
 
         set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
         await new Promise(r => setTimeout(r, 800 * speedMult));
@@ -299,7 +309,7 @@ export const useGameStore = create<GameState>()(
           if (state.stage === MAX_STAGE) { 
             const nextCleared = [...state.clearedRegions];
             if (state.currentRegion && !nextCleared.includes(state.currentRegion)) nextCleared.push(state.currentRegion);
-            set({ isBattling: false, isGameOver: true, isFastForwarding: false, clearedRegions: nextCleared, highScores: newHighScores }); 
+            set({ isBattling: false, isGameOver: true, clearedRegions: nextCleared, highScores: newHighScores }); 
             return; 
           }
           const goldReward = 5 + state.stage; 
@@ -308,11 +318,11 @@ export const useGameStore = create<GameState>()(
           set(s => ({ 
             enemyTeam: generateEnemies(nextStage), 
             playerTeam: pTeam.map(p => ({ ...p, hp: p.maxHp, status: 'idle', lastDamageTaken: null })), 
-            shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, isFastForwarding: false, combatText: "", shopFrozen: false,
+            shopItems: nextShop, gold: s.gold + goldReward, stage: nextStage, isBattling: false, combatText: "", shopFrozen: false,
             highScores: { ...s.highScores, [curReg]: Math.max(s.highScores?.[curReg] || 1, nextStage) }
           }));
         } else if (pTeam.every(p => p.hp <= 0)) {
-          set({ isBattling: false, isGameOver: true, isFastForwarding: false });
+          set({ isBattling: false, isGameOver: true });
         }
       },
 
@@ -374,7 +384,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'kanto-expeditions-storage',
-      partialize: (state) => ({ pokedex: state.pokedex, highScores: state.highScores, clearedRegions: state.clearedRegions })
+      partialize: (state) => ({ pokedex: state.pokedex, highScores: state.highScores, clearedRegions: state.clearedRegions, isFastForwarding: state.isFastForwarding })
     }
   )
 );
