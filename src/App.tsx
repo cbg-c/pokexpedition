@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS, getMaxCopies } from './store';
+import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS, getMaxCopies, POKEMON_DB } from './store';
 import './App.css';
 
 const PokeCoin = () => <div className="pokecoin" title="Pokecoin" />;
@@ -70,14 +70,19 @@ const PokemonSlot = ({ pos, p, isEnemy, isActive, onDragStart, onDrop }: { pos: 
 };
 
 function App() {
-  const { currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, isFastForwarding, combatText, startBattle, toggleFastForward, gameTick, buyPokemon, refreshShop, swapSlots, resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScores } = useGameStore();
+  const { 
+    currentRegion, clearedRegions, setRegion, returnToMenu, hasSelectedStarter, isGameOver, 
+    selectStarter, playerTeam, enemyTeam, shopItems, gold, stage, isBattling, isFastForwarding, 
+    combatText, startBattle, toggleFastForward, gameTick, buyPokemon, refreshShop, swapSlots, 
+    resetGame, sellPokemon, shopFrozen, toggleFreeze, pokedex, highScores, pendingChoice, resolveChoice 
+  } = useGameStore();
+
   const [draggedPokemon, setDraggedPokemon] = useState<Pokemon | null>(null);
   const [showPokedex, setShowPokedex] = useState<boolean>(false);
   const [dexView, setDexView] = useState<'normal' | 'shiny'>('normal');
 
   useEffect(() => {
     if (!isBattling) return;
-    // Exactly 3x faster pacing during fast forward
     const interval = setInterval(gameTick, isFastForwarding ? 466 : 1400); 
     return () => clearInterval(interval);
   }, [isBattling, isFastForwarding, gameTick]);
@@ -111,6 +116,7 @@ function App() {
   return (
     <div className={`game-wrapper ${isFastForwarding ? 'fast-forward' : ''}`}>
       
+      {/* Pokedex Modal */}
       {showPokedex && (
         <div className="modal-overlay" onClick={() => setShowPokedex(false)}>
           <div className="modal-box pokedex-modal" onClick={e => e.stopPropagation()}>
@@ -144,6 +150,7 @@ function App() {
         </div>
       )}
 
+      {/* Starter Selection Modal */}
       {!hasSelectedStarter && !isGameOver && !showPokedex && (
         <div className="modal-overlay">
           <div className="modal-box">
@@ -157,6 +164,28 @@ function App() {
         </div>
       )}
 
+      {/* Branching Evolution Choice Modal (e.g. Eevee) */}
+      {pendingChoice && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h2>{pendingChoice.title}</h2>
+            <div className="starter-options">
+              {pendingChoice.choices.map(dexId => {
+                const target = POKEMON_DB.find(p => p.baseId === dexId);
+                if (!target) return null;
+                return (
+                  <div key={dexId} className="starter-card" onClick={() => resolveChoice(dexId)}>
+                    <SpriteDisplay id={dexId} isShiny={false} />
+                    <h3 className={`bg-type-${target.types[0]}`}>{target.name}</h3>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Modal */}
       {isGameOver && (
         <div className="modal-overlay">
           <div className="modal-box game-over-box">
@@ -170,24 +199,24 @@ function App() {
         </div>
       )}
 
+      {/* Top Header */}
       <header className="main-header">
         <div className="title-group">
           <h1>{currentRegion} Expeditions</h1>
           <button className="restart-btn" onClick={resetGame}>RESTART</button>
           <button className="pokedex-btn" onClick={() => setShowPokedex(true)}>POKEDEX</button>
           <button className="pokedex-btn alt-btn" onClick={returnToMenu}>MENU</button>
+          <button onClick={toggleFastForward} className={`header-ff-btn ${isFastForwarding ? 'active' : ''}`}>
+            Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
+          </button>
         </div>
         <div className="header-info">
           <button className="support-btn">Support</button>
         </div>
       </header>
 
+      {/* Battlefield Main View */}
       <main className="battle-area">
-        
-        <button onClick={toggleFastForward} className={`battle-btn skip-btn top-left-btn ${isFastForwarding ? 'active' : ''}`}>
-          Fast Forward: {isFastForwarding ? 'ON' : 'OFF'}
-        </button>
-
         <div className="stadium-art">
           <div className="stadium-line"></div>
           <div className="stadium-circle"><div className="stadium-inner-circle"></div></div>
@@ -212,8 +241,19 @@ function App() {
               </div>
               {[0,1,2,3,4,5].map(pos => {
                 const p = playerTeam.find(p => p.position === pos);
-                return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} 
-                          onDragStart={(draggedPoke) => setDraggedPokemon(draggedPoke)} onDrop={(targetPos) => { if (draggedPokemon !== null) swapSlots(draggedPokemon.position, targetPos); setDraggedPokemon(null); }} />;
+                return (
+                  <PokemonSlot 
+                    key={`p-${pos}`} 
+                    pos={pos} 
+                    p={p} 
+                    isActive={p?.id === activePlayer?.id} 
+                    onDragStart={(draggedPoke) => setDraggedPokemon(draggedPoke)} 
+                    onDrop={(targetPos) => { 
+                      if (draggedPokemon !== null) swapSlots(draggedPokemon.position, targetPos); 
+                      setDraggedPokemon(null); 
+                    }} 
+                  />
+                );
               })}
             </div>
             <div className="party-line enemy-line">
@@ -237,10 +277,15 @@ function App() {
         </div>
       </main>
 
+      {/* Pokemart Footer */}
       <footer 
         className="pokemart"
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); if (draggedPokemon !== null) sellPokemon(draggedPokemon.position); setDraggedPokemon(null); }}
+        onDrop={(e) => { 
+          e.preventDefault(); 
+          if (draggedPokemon !== null) sellPokemon(draggedPokemon.position); 
+          setDraggedPokemon(null); 
+        }}
       >
         {draggedPokemon && (
           <div className="sell-zone-overlay">
