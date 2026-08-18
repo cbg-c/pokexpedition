@@ -8,7 +8,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 
 /* Custom Coin & Action Icons */
 .pokecoin { display: inline-block; width: 12px; height: 12px; background: #f1c40f; border: 2px solid #d35400; border-radius: 50%; box-shadow: inset 1px 1px 0 #f9e79f; vertical-align: middle; margin: 0 2px; margin-bottom: 2px; }
-.custom-icon { display: block; width: 18px; height: 18px; border: 3px solid currentColor; border-radius: 50%; position: relative; flex-shrink: 0; }
+.custom-icon { display: block; width: 16px; height: 16px; border: 3px solid currentColor; border-radius: 50%; position: relative; flex-shrink: 0; }
 .freeze-icon { background: linear-gradient(135deg, transparent 40%, white 40%, white 60%, transparent 60%); border-color: white; }
 .frozen-active .freeze-icon { background: linear-gradient(135deg, transparent 40%, #333 40%, #333 60%, transparent 60%); border-color: #333; }
 .refresh-icon { border-bottom-color: transparent; border-left-color: transparent; transform: rotate(45deg); border-width: 3px; border-color: #333; }
@@ -68,6 +68,11 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .header-info { display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 1.1rem; }
 .support-btn { background: #ff813f; color: white; border: 3px solid #333; padding: 8px; cursor: pointer; }
 
+/* HEADER FAST FORWARD TOGGLE */
+.header-ff-btn { background: #34495e; color: white; border: 3px solid #333; padding: 8px 14px; cursor: pointer; font-size: 0.65rem; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,0.5); text-transform: uppercase; transition: all 0.2s; }
+.header-ff-btn.active { background: #e67e22; border-color: #d35400; box-shadow: 0 0 10px #e67e22; }
+.header-ff-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
 /* BATTLE AREA: PURE FLEXBOX ZERO SCROLL */
 .battle-area { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; border: 6px solid #333; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 6px 6px 0 rgba(0,0,0,0.2); background: linear-gradient(90deg, #78AB46 0%, #78AB46 20%, #e0c98f 20%, #e0c98f 80%, #78AB46 80%, #78AB46 100%); z-index: 10; overflow: hidden; }
 .battle-area-top, .battle-area-bottom { width: 100%; position: relative; z-index: 5; display: flex; justify-content: center; }
@@ -91,12 +96,12 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .combat-text { position: absolute; top: 30%; font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffeb3b; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 30; animation: popUp 1s ease-out forwards; pointer-events: none; }
 @keyframes popUp { 0% { opacity: 0; transform: translateY(20px) scale(0.5); } 20% { opacity: 1; transform: translateY(0) scale(1.2); } 80% { opacity: 1; transform: translateY(-10px) scale(1); } 100% { opacity: 0; transform: translateY(-20px); } }
 
-/* FIELD LABELS (Moved to Top inside Party Line Container) */
+/* FIELD LABELS */
 .party-header { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 28px; margin-bottom: 42px; z-index: 5; }
 .field-label { color: white; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; font-size: clamp(0.75rem, 1.2vw, 0.95rem); pointer-events: none; margin: 0; text-align: center; }
 .rearrange-hint { font-size: 0.45rem; color: #ddd; font-family: Verdana, sans-serif; display: block; margin-top: 2px; text-align: center; }
 
-/* FULLY RESPONSIVE PARTY SLOTS: NO OVERFLOW ON 1080p */
+/* FULLY RESPONSIVE PARTY SLOTS */
 .party-lines-container { display: flex; justify-content: space-between; width: 100%; max-width: 1100px; padding: 0 40px; box-sizing: border-box; z-index: 5; position: relative; }
 .party-line { display: flex; flex-direction: column; gap: clamp(10px, 2vh, 16px); }
 .party-slot { width: clamp(32px, 5.8vh, 56px); height: clamp(32px, 5.8vh, 56px); flex: 0 0 auto; box-sizing: border-box; background: rgba(0,0,0,0.1); border: 2px dashed #666; border-radius: 6px; display: flex; justify-content: center; align-items: center; position: relative; transition: all 0.3s; }
@@ -127,7 +132,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .field-type-badges { position: absolute; top: -8px; right: -22px; display: flex; flex-direction: column; gap: 2px; z-index: 15; pointer-events: none; }
 .field-type-badge { font-size: 0.42rem; padding: 1px 3px; border-radius: 3px; border: 1px solid #fff; color: #fff; text-shadow: 1px 1px 0 #000; font-weight: 900; box-shadow: 1px 1px 0 rgba(0,0,0,0.3); font-family: Verdana, sans-serif; letter-spacing: 0.5px; }
 
-/* HORIZONTAL TOOLTIP SIDE-POP */
+/* TOOLTIPS */
 .pokemon-tooltip { position: absolute; background: rgba(0, 0, 0, 0.95); color: white; padding: 10px; border-radius: 6px; border: 2px solid #fff; font-family: sans-serif; font-size: 0.65rem; width: max-content; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.1s; z-index: 1000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
 .party-slot:hover .pokemon-tooltip { opacity: 1; visibility: visible; }
 .player-slot .pokemon-tooltip { left: 115%; top: 50%; transform: translateY(-50%); }
@@ -146,43 +151,32 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .battle-btn { font-size: 0.85rem; padding: 12px 20px; background: #e3350d; color: white; border: 3px solid #333; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.5); }
 .battle-btn:hover { background: #cc2f0b; transform: scale(1.05); }
 
-/* TOP LEFT FAST FORWARD */
-.top-left-btn { position: absolute; top: 15px; left: 15px; z-index: 50; }
-.skip-btn { background: #e67e22; font-size: 0.65rem; padding: 8px 12px; border-color: #d35400; box-shadow: 0 0 10px #e67e22; }
-.skip-btn.active { background: #34495e; border-color: #333; box-shadow: none; }
-.skip-btn:hover { filter: brightness(1.1); }
-
-/* POKEMART: SCALED CLEANLY WITHOUT OVERFLOW */
+/* POKEMART FOOTER */
 .pokemart { flex: 0 0 auto; background: #fdf5e6; padding: 8px 12px; border: 4px solid #333; box-shadow: 4px 4px 0 rgba(0,0,0,0.2); transition: background-color 0.3s; position: relative; z-index: 5; }
-
-/* DRAG TO SELL ZONE */
 .sell-zone-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.9); color: white; font-family: 'Press Start 2P', monospace; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; z-index: 100; border-radius: 4px; text-shadow: 3px 3px 0 #000; }
-
 .pokemart-header { display: flex; justify-content: space-between; border-bottom: 2px dashed #ccc; padding-bottom: 4px; margin-bottom: 6px; }
 .pokemart-header h2 { font-size: 0.85rem; }
 
 .shop-layout { display: flex; justify-content: center; align-items: stretch; gap: 12px; }
 .shop-cards { display: flex; gap: 8px; flex-wrap: nowrap; justify-content: center; }
 
-/* FULLY CONTAINED SHOP CARD */
-.shop-card { position: relative; width: clamp(105px, 12vw, 135px); border: 3px solid #333; border-radius: 6px; padding: 6px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); background: white; transition: transform 0.2s, filter 0.2s; display: flex; flex-direction: column; box-sizing: border-box; }
+/* CONTAINED SHOP CARDS */
+.shop-card { position: relative; width: clamp(110px, 13vw, 145px); border: 3px solid #333; border-radius: 6px; padding: 6px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); background: white; transition: transform 0.2s, filter 0.2s; display: flex; flex-direction: column; box-sizing: border-box; }
 .shop-card.purchasable { cursor: pointer; }
 .shop-card.purchasable:hover { transform: translateY(-3px); filter: brightness(1.05); box-shadow: 2px 4px 0 rgba(0,0,0,0.3); }
 .shop-card.disabled-card { opacity: 0.6; cursor: not-allowed; }
 .shop-card .buy-btn { pointer-events: none; }
-
 .shop-card-owned { border-color: #2ecc71 !important; box-shadow: 0 0 15px rgba(46,204,113,0.8), inset 0 0 8px rgba(46,204,113,0.3) !important; }
 
-/* CONTAINED INLINE HEADER INSIDE CARD */
 .shop-card-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 4px; position: relative; gap: 4px; }
 .tier-ribbon { color: white; font-size: 0.45rem; padding: 3px 5px; border-radius: 3px; border: 1.5px solid #fff; text-shadow: 1px 1px 0 #000; flex-shrink: 0; font-family: Verdana, sans-serif; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
 .shop-type-badges { display: flex; gap: 2px; flex-shrink: 0; }
-.type-badge { color: white; font-size: 0.38rem; padding: 2px 4px; border-radius: 3px; border: 1.5px solid #fff; text-shadow: 1px 1px 0 #000; font-family: Verdana, sans-serif; font-weight: 900; letter-spacing: 0.5px; }
+.type-badge { color: white; font-size: 0.4rem; padding: 2px 4px; border-radius: 3px; border: 1.5px solid #fff; text-shadow: 1px 1px 0 #000; font-family: Verdana, sans-serif; font-weight: 900; letter-spacing: 0.5px; }
 .caught-icon { width: 12px; height: 12px; background: radial-gradient(circle at 50% 50%, white 20%, black 20%, black 30%, transparent 30%), linear-gradient(to bottom, #e74c3c 45%, black 45%, black 55%, white 55%); border: 1.5px solid #333; border-radius: 50%; flex-shrink: 0; }
 
 .shop-pokemon-name { font-size: 0.65rem; text-align: center; margin: 2px 0 4px 0; font-weight: bold; font-family: sans-serif; }
 
-.card-image-bg { background: rgba(255,255,255,0.6); border: 2px solid #333; display: flex; justify-content: center; align-items: center; margin-bottom: 4px; border-radius: 4px; position: relative; height: clamp(40px, 6vh, 60px); flex-grow: 1; }
+.card-image-bg { background: rgba(255,255,255,0.6); border: 2px solid #333; display: flex; justify-content: center; align-items: center; margin-bottom: 4px; border-radius: 4px; position: relative; height: clamp(40px, 5.5vh, 58px); flex-grow: 1; }
 .card-image-bg img { height: 100%; width: 100%; object-fit: contain; }
 
 .upgrade-badge { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); background: #2ecc71; color: black; font-family: 'Press Start 2P', monospace; font-size: 0.45rem; padding: 2px 4px; border: 1.5px solid white; border-radius: 3px; z-index: 10; pointer-events: none; animation: pulse 1s infinite alternate; }
@@ -193,18 +187,18 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .tier-3 { background-color: #ebdef0; border-color: #9b59b6; } .tier-3 .tier-ribbon { background: #9b59b6; }
 .tier-4 { background-color: #fcf3cf; border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.8); } .tier-4 .tier-ribbon { background: #e67e22; color: #fff; border-color: #ffd700; }
 
-/* HORIZONTAL STACKED ACTION BUTTONS */
+/* ACTION BUTTONS */
 .pokemart-actions { display: flex; flex-direction: column; gap: 8px; justify-content: center; width: 180px; flex-shrink: 0; }
 .action-btn { width: 100%; height: 50px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 15px; border: 3px solid #333; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.4); transition: transform 0.2s, box-shadow 0.2s; box-sizing: border-box; }
 .action-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 0 rgba(0,0,0,0.4); }
 .action-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.4); }
-.action-btn-text { display: flex; align-items: center; gap: 15px; white-space: nowrap; font-size: 0.8rem; font-family: 'Press Start 2P', monospace; text-transform: uppercase; }
+.action-btn-text { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-size: 0.75rem; font-family: 'Press Start 2P', monospace; text-transform: uppercase; }
 
 .freeze-btn { background: #3498db; color: white; }
 .freeze-btn.frozen-active { background: #81ecec; color: #333; box-shadow: 0 0 12px #00cec9; border-color: #00cec9; }
 .refresh-btn-large { background: #f4b41a; color: #333; }
 
-/* OFFICIAL POKEMON TYPE HEX COLORS */
+/* TYPE COLORS */
 .bg-type-normal { background-color: #A8A77A; color: #fff; } .bg-type-fire { background-color: #EE8130; color: #fff; } .bg-type-water { background-color: #6390F0; color: #fff; } .bg-type-electric { background-color: #F7D02C; color: #000; text-shadow: none; } .bg-type-grass { background-color: #7AC74C; color: #000; text-shadow: none; } .bg-type-ice { background-color: #96D9D6; color: #000; text-shadow: none; } .bg-type-fighting { background-color: #C22E28; color: #fff; } .bg-type-poison { background-color: #A33EA1; color: #fff; } .bg-type-ground { background-color: #E2BF65; color: #000; text-shadow: none; } .bg-type-flying { background-color: #A98FF3; color: #000; text-shadow: none; } .bg-type-psychic { background-color: #F95587; color: #fff; } .bg-type-bug { background-color: #A6B91A; color: #fff; } .bg-type-rock { background-color: #B6A136; color: #fff; } .bg-type-ghost { background-color: #735797; color: #fff; } .bg-type-dragon { background-color: #6F35FC; color: #fff; } .bg-type-steel { background-color: #B7B7CE; color: #000; text-shadow: none; } .bg-type-fairy { background-color: #D685AD; color: #000; text-shadow: none; }
 
 .sold-out { background: #e0e0e0; border: 3px dashed #999; display: flex; align-items: center; justify-content: center; opacity: 0.6; box-shadow: none; }
@@ -213,7 +207,7 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .card-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; font-size: clamp(0.45rem, 0.9vh, 0.55rem); font-family: sans-serif; font-weight: bold; margin-bottom: 4px; }
 .card-stats-grid span { background: rgba(255,255,255,0.5); padding: 2px; border: 1px solid rgba(0,0,0,0.1); border-radius: 2px; }
 
-/* 1 LINE BUY BUTTON */
+/* 1-Line Buy Button */
 .buy-btn { background: white; border: 2px solid #333; padding: 4px; width: 100%; border-radius: 3px; white-space: nowrap; font-size: clamp(0.45rem, 0.9vh, 0.55rem); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -222,7 +216,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .enemy-slot .sprite-container.attacking { animation: enemyAttackLunge 0.4s ease-in-out; }
 .sprite-container.damaged { animation: damagedFlash 0.5s; filter: brightness(2); }
 
-/* FAST FORWARD 3x SPEED OVERRIDES */
+/* Fast-Forward Overrides */
 .fast-forward .sprite-container.attacking { animation: attackLunge 0.13s ease-in-out; }
 .fast-forward .enemy-slot .sprite-container.attacking { animation: enemyAttackLunge 0.13s ease-in-out; }
 .fast-forward .sprite-container.damaged { animation: damagedFlash 0.16s; }
