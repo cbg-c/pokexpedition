@@ -68,8 +68,8 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .header-ff-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
 
 .battle-area { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; border: 6px solid #333; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 6px 6px 0 rgba(0,0,0,0.2); background: linear-gradient(90deg, #78AB46 0%, #78AB46 20%, #e0c98f 20%, #e0c98f 80%, #78AB46 80%, #78AB46 100%); z-index: 10; overflow: hidden; }
-.battle-area-top { width: 100%; position: relative; z-index: 5; display: flex; justify-content: center; }
-.battle-area-middle { width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: stretch; flex: 1 1 0; min-height: 0; padding: 0 20px; box-sizing: border-box; }
+.battle-area-top { width: 100%; position: relative; z-index: 5; display: flex; justify-content: center; margin-bottom: 20px; }
+.battle-area-middle { width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: center; flex: 1 1 0; min-height: 0; padding: 0 20px; box-sizing: border-box; }
 
 .stadium-art { position: absolute; top: 0; bottom: 0; left: 20%; right: 20%; pointer-events: none; z-index: 1; display: flex; justify-content: center; align-items: center; }
 .stadium-line { position: absolute; width: 100%; height: 4px; background: rgba(255, 255, 255, 0.4); }
@@ -85,31 +85,35 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .combat-text { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: #ffeb3b; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 30; animation: popUp 1s ease-out forwards; pointer-events: none; }
 @keyframes popUp { 0% { opacity: 0; transform: translateY(20px) scale(0.5); } 20% { opacity: 1; transform: translateY(0) scale(1.2); } 80% { opacity: 1; transform: translateY(-10px) scale(1); } 100% { opacity: 0; transform: translateY(-20px); } }
 
-/* SIDEBAR & BOARDS TFT LAYOUT */
-.synergy-sidebar { width: clamp(100px, 15vw, 150px); display: flex; flex-direction: column; gap: 8px; padding-top: 20px; overflow-y: auto; z-index: 20; }
-.synergy-badge { padding: 4px 8px; border: 2px solid #fff; border-radius: 4px; font-size: clamp(0.5rem, 1vw, 0.6rem); color: white; text-shadow: 1px 1px 0 #000; font-family: 'Press Start 2P', monospace; box-shadow: 2px 2px 0 rgba(0,0,0,0.5); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boards-container { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; position: relative; z-index: 5; margin-right: clamp(100px, 15vw, 150px); }
+/* TOOLTIP AND SYNERGY SIDEBAR */
+.synergy-sidebar { width: clamp(120px, 15vw, 160px); display: flex; flex-direction: column; gap: 8px; overflow-y: auto; z-index: 20; max-height: 100%; }
+.synergy-badge { position: relative; padding: 6px 10px; border: 2px solid #fff; border-radius: 4px; font-size: clamp(0.5rem, 1vw, 0.6rem); color: white; text-shadow: 1px 1px 0 #000; font-family: 'Press Start 2P', monospace; box-shadow: 2px 2px 0 rgba(0,0,0,0.5); text-transform: uppercase; cursor: help; }
+.inactive-syn { background-color: rgba(50,50,50,0.8); border-color: #666; color: #999; box-shadow: none; text-shadow: none; }
+.syn-tooltip { display: none; position: absolute; left: 110%; top: 0; background: rgba(0,0,0,0.95); color: white; padding: 12px; border: 2px solid white; border-radius: 6px; z-index: 100; width: max-content; max-width: 250px; font-family: sans-serif; font-size: 0.7rem; text-transform: none; text-shadow: none; white-space: normal; line-height: 1.5; pointer-events: none; }
+.synergy-badge:hover .syn-tooltip { display: block; }
+.syn-tooltip strong { color: #f1c40f; display: inline-block; margin-bottom: 4px; border-bottom: 1px solid #555; padding-bottom: 2px; width: 100%; }
 
+/* 1-ROW HORIZONTAL BOARDS */
+.boards-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; z-index: 5; margin-right: clamp(120px, 15vw, 160px); gap: 20px; }
 .party-header { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 28px; z-index: 5; margin-bottom: 6px; }
-.field-label { color: white; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; font-size: clamp(0.6rem, 1vw, 0.8rem); pointer-events: none; margin: 0; text-align: center; }
+.field-label { color: white; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; font-size: clamp(0.7rem, 1.2vw, 0.9rem); pointer-events: none; margin: 0; text-align: center; }
 
 .party-line { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.board-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(6px, 1vh, 12px); max-width: 320px; }
+.board-grid { display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: center; gap: clamp(6px, 1vw, 12px); width: 100%; min-width: 400px; }
+.bench-container { display: flex; justify-content: center; gap: clamp(6px, 1vw, 12px); padding: 12px 0; background: rgba(0,0,0,0.4); border-top: 4px solid #333; z-index: 15; flex-wrap: wrap; width: 100%; }
 
-.bench-container { display: flex; justify-content: center; gap: clamp(6px, 1vw, 12px); padding: 8px 0; background: rgba(0,0,0,0.3); border-top: 4px solid #333; z-index: 15; flex-wrap: wrap; }
-
-.party-slot { width: clamp(38px, 6vh, 58px); height: clamp(38px, 6vh, 58px); flex: 0 0 auto; box-sizing: border-box; background: rgba(0,0,0,0.1); border: 2px dashed #666; border-radius: 6px; display: flex; justify-content: center; align-items: center; position: relative; transition: all 0.3s; }
+.party-slot { width: clamp(48px, 7vh, 64px); height: clamp(48px, 7vh, 64px); flex: 0 0 auto; box-sizing: border-box; background: rgba(0,0,0,0.1); border: 2px dashed #666; border-radius: 6px; display: flex; justify-content: center; align-items: center; position: relative; transition: all 0.3s; }
 .player-slot { cursor: grab; }
 .player-slot:active { cursor: grabbing; }
 .player-slot:hover { background: rgba(255,255,255,0.3); border-color: #fff; }
 
-.active-fighter.player-slot { transform: translateX(30px) scale(1.25); z-index: 10; border-color: #e3350d; background: rgba(227, 53, 13, 0.2); }
-.active-fighter.enemy-slot { transform: translateX(-30px) scale(1.25); z-index: 10; border-color: #333; background: rgba(0,0,0,0.2); }
+/* Attack lunge direction overrides based on 1-Row Setup */
+.active-fighter.player-slot { transform: translateY(-30px) scale(1.25); z-index: 10; border-color: #e3350d; background: rgba(227, 53, 13, 0.2); }
+.active-fighter.enemy-slot { transform: translateY(30px) scale(1.25); z-index: 10; border-color: #333; background: rgba(0,0,0,0.2); }
 .empty-slot { border: 2px dashed rgba(0,0,0,0.3); background: transparent; }
 
 .sprite-container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
 .pixel-sprite { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.3)); pointer-events: none; color: transparent; font-size: 0; text-indent: -9999px; }
-.enemy-slot img { transform: scaleX(-1); }
 
 .damage-text { position: absolute; top: -10px; color: #ff5252; font-size: 0.9rem; font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 50; animation: damageFloat 0.8s ease-out forwards; pointer-events: none; }
 @keyframes damageFloat { 0% { opacity: 1; transform: translateY(0) scale(1.5); } 100% { opacity: 0; transform: translateY(-30px) scale(1); } }
@@ -126,8 +130,8 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 
 .pokemon-tooltip { position: absolute; background: rgba(0, 0, 0, 0.95); color: white; padding: 10px; border-radius: 6px; border: 2px solid #fff; font-family: sans-serif; font-size: 0.65rem; width: max-content; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.1s; z-index: 1000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
 .party-slot:hover .pokemon-tooltip { opacity: 1; visibility: visible; }
-.player-slot .pokemon-tooltip { left: 115%; top: 50%; transform: translateY(-50%); }
-.enemy-slot .pokemon-tooltip { right: 115%; top: 50%; transform: translateY(-50%); }
+.player-slot .pokemon-tooltip { left: 50%; top: -120%; transform: translateX(-50%); }
+.enemy-slot .pokemon-tooltip { left: 50%; top: 120%; transform: translateX(-50%); }
 .pokemon-tooltip h4 { text-align: center; color: #fff; border-bottom: 1px solid #555; padding-bottom: 4px; margin-bottom: 6px; font-size: 0.55rem; font-family: 'Press Start 2P', monospace;}
 .tooltip-types { display: flex; justify-content: center; gap: 4px; margin-bottom: 6px; }
 .tooltip-type { padding: 2px 4px; border-radius: 3px; border: 1px solid white; color: white; text-shadow: 1px 1px 0 #000; font-weight: 900; font-family: Verdana, sans-serif; letter-spacing: 0.5px; }
@@ -176,7 +180,6 @@ h1, h2, h3, h4, .battle-btn, .buy-btn, .action-btn, .restart-btn, .pokedex-btn, 
 .tier-3 { background-color: #ebdef0; border-color: #9b59b6; } .tier-3 .tier-ribbon { background: #9b59b6; }
 .tier-4 { background-color: #fcf3cf; border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.8); } .tier-4 .tier-ribbon { background: #e67e22; color: #fff; border-color: #ffd700; }
 
-/* FIX ACTION BUTTON LAYOUT FOR TEXT OVERFLOW */
 .pokemart-actions { display: flex; flex-direction: column; gap: 8px; justify-content: center; width: clamp(160px, 18vw, 220px); flex-shrink: 0; }
 .action-btn { width: 100%; height: auto; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 10px; border: 3px solid #333; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.4); transition: transform 0.2s, box-shadow 0.2s; box-sizing: border-box; }
 .action-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 0 rgba(0,0,0,0.4); }
@@ -217,6 +220,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.1); } }
 @keyframes idleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes attackLunge { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-10px, 0); } 50% { transform: translate(80px, 0) scale(1.2); } }
-@keyframes enemyAttackLunge { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(10px, 0) scaleX(-1); } 50% { transform: translate(-80px, 0) scale(1.2) scaleX(-1); } }
+@keyframes attackLunge { 0%, 100% { transform: translate(0, -30px) scale(1.2); } }
+@keyframes enemyAttackLunge { 0%, 100% { transform: translate(0, 30px) scale(1.2); } }
 @keyframes damagedFlash { 0%, 100% { filter: brightness(1); transform: translateX(0); } 10%, 50%, 90% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(-6px); } 30%, 70% { filter: brightness(2) invert(0.2) sepia(1) hue-rotate(-50deg) saturate(5); transform: translateX(6px); } }
