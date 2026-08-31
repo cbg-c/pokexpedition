@@ -171,12 +171,6 @@ function App() {
           <div className="stadium-circle"><div className="stadium-inner-circle"></div></div>
         </div>
 
-        <div className="synergy-tracker">
-          {Object.entries(synergies).map(([type, count]) => (
-            <div key={type} className={`synergy-badge bg-type-${type}`}>{type}: {count}</div>
-          ))}
-        </div>
-
         <div className="battle-area-top">
           <div className="stage-tracker">
             <h3>Stage {stage} / 20 {stage === 20 && "[ ELITE FOUR ]"}</h3>
@@ -188,25 +182,15 @@ function App() {
         {combatText && <div className="combat-text">{combatText}</div>}
         
         <div className="battle-area-middle">
-          <div className="party-lines-container">
-            
-            <div className="party-line player-line">
-              <div className="party-header"><h2 className="field-label">BOARD ({activeBoard.length}/{level})</h2></div>
-              <div className="board-grid">
-                {[0,1,2,3,4,5].map(pos => {
-                  const p = playerTeam.find(p => p.position === pos);
-                  return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} onDragStart={setDraggedPokemon} onDrop={(t) => { if (draggedPokemon) swapSlots(draggedPokemon.position, t); setDraggedPokemon(null); }} />
-                })}
-              </div>
-              <div className="party-header" style={{ marginTop: '10px' }}><h2 className="field-label">BENCH</h2></div>
-              <div className="board-grid bench-grid">
-                {[6,7,8,9,10,11,12,13].map(pos => {
-                  const p = playerTeam.find(p => p.position === pos);
-                  return <PokemonSlot key={`b-${pos}`} pos={pos} p={p} onDragStart={setDraggedPokemon} onDrop={(t) => { if (draggedPokemon) swapSlots(draggedPokemon.position, t); setDraggedPokemon(null); }} />
-                })}
-              </div>
-            </div>
+          
+          {/* TFT-style Left Sidebar for Synergies */}
+          <div className="synergy-sidebar">
+            {Object.entries(synergies).map(([type, count]) => (
+              <div key={type} className={`synergy-badge bg-type-${type}`}>{type}: {count}</div>
+            ))}
+          </div>
 
+          <div className="boards-container">
             <div className="party-line enemy-line">
               <div className="party-header"><h2 className="field-label">OPPONENT</h2></div>
               <div className="board-grid">
@@ -216,22 +200,34 @@ function App() {
                 })}
               </div>
             </div>
-            
+
+            <div className="party-line player-line">
+              <div className="party-header"><h2 className="field-label">BOARD ({activeBoard.length}/{level})</h2></div>
+              <div className="board-grid">
+                {[0,1,2,3,4,5].map(pos => {
+                  const p = playerTeam.find(p => p.position === pos);
+                  return <PokemonSlot key={`p-${pos}`} pos={pos} p={p} isActive={p?.id === activePlayer?.id} onDragStart={setDraggedPokemon} onDrop={(t) => { if (draggedPokemon) swapSlots(draggedPokemon.position, t); setDraggedPokemon(null); }} />
+                })}
+              </div>
+            </div>
+          </div>
+          
+          <div className="controls-overlay">
+            {!isBattling && activeBoard.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn start-btn">Start Expedition</button>}
           </div>
         </div>
 
-        <div className="battle-area-bottom">
-          <div className="massive-gold-display">Gold: {gold} <PokeCoin /> (+{Math.min(5, Math.floor(gold / 10))})</div>
+        <div className="bench-container">
+          {[6,7,8,9,10,11,12,13].map(pos => {
+            const p = playerTeam.find(p => p.position === pos);
+            return <PokemonSlot key={`b-${pos}`} pos={pos} p={p} onDragStart={setDraggedPokemon} onDrop={(t) => { if (draggedPokemon) swapSlots(draggedPokemon.position, t); setDraggedPokemon(null); }} />
+          })}
         </div>
 
-        <div className="controls-overlay">
-          {!isBattling && activeBoard.some(p => p.hp > 0) && <button onClick={startBattle} className="battle-btn start-btn">Start Expedition</button>}
-        </div>
       </main>
 
       <footer className="pokemart" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedPokemon) sellPokemon(draggedPokemon.position); setDraggedPokemon(null); }}>
         {draggedPokemon && <div className="sell-zone-overlay">Drop to Sell (+{getSellValue(draggedPokemon.tier, draggedPokemon.copies)} <PokeCoin />)</div>}
-        <div className="pokemart-header"><h2>POKEMART</h2></div>
         
         <div className="shop-layout">
           <div className="shop-cards">
@@ -254,14 +250,17 @@ function App() {
           </div>
           
           <div className="pokemart-actions">
+            <div className="massive-gold-display">Gold: {gold} <PokeCoin /> (+{Math.min(5, Math.floor(gold / 10))})</div>
             <button className="action-btn" onClick={buyXp} disabled={gold < 4 || level >= 10}>
               <div className="action-btn-text">
-                <div className="custom-icon refresh-icon" style={{ borderColor: 'transparent', borderBottomColor: '#333' }} />
-                <span>BUY XP (4G) [{xp}/{level * 4}]</span>
+                <span className="btn-title">Level {level} ({activeBoard.length}/{level} Units)</span>
+                <span className="btn-sub">Buy XP: 4G [{xp}/{level * 4}]</span>
               </div>
             </button>
-            <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}><div className="action-btn-text"><div className="custom-icon freeze-icon" /><span>FREEZE</span></div></button>
-            <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}><div className="action-btn-text"><div className="custom-icon refresh-icon" /><span>REFRESH (2 <PokeCoin />)</span></div></button>
+            <div className="action-row-split">
+              <button className={`action-btn freeze-btn ${shopFrozen ? 'frozen-active' : ''}`} onClick={toggleFreeze}><div className="action-btn-text"><div className="custom-icon freeze-icon" /></div></button>
+              <button className="action-btn refresh-btn-large" onClick={refreshShop} disabled={gold < 2}><div className="action-btn-text"><span>Refresh (2G)</span></div></button>
+            </div>
           </div>
         </div>
       </footer>
