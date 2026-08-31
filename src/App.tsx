@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS, getMaxCopies, POKEMON_DB } from './store';
+import { useGameStore, getSpriteUrl, getCost, getSellValue, Pokemon, REGIONS, getMaxCopies, POKEMON_DB, SYNERGY, getSynLvl } from './store';
 import './App.css';
 
 const PokeCoin = () => <div className="pokecoin" title="Pokecoin" />;
@@ -183,11 +183,20 @@ function App() {
         
         <div className="battle-area-middle">
           
-          {/* TFT-style Left Sidebar for Synergies */}
           <div className="synergy-sidebar">
-            {Object.entries(synergies).map(([type, count]) => (
-              <div key={type} className={`synergy-badge bg-type-${type}`}>{type}: {count}</div>
-            ))}
+            {Object.entries(SYNERGY).map(([type, data]) => {
+              const count = synergies[type] || 0;
+              if (count === 0) return null;
+              const active = getSynLvl(count, data.t) >= 0;
+              return (
+                <div key={type} className={`synergy-badge ${active ? `bg-type-${type}` : 'inactive-syn'}`}>
+                  {type}: {count}
+                  <div className="syn-tooltip">
+                    <strong>{type.toUpperCase()}</strong> ({data.t.join(' / ')})<br/>{data.d}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="boards-container">
