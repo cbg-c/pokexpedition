@@ -93,6 +93,54 @@ export const SINGLE_STAGE_BASE_IDS = new Set([83, 95, 106, 107, 108, 113, 114, 1
 export const BRANCHING_EVOS: Record<number, { title: string; choices: number[] }> = { 133: { title: "Choose Eeveelution", choices: [134, 135, 136] } };
 export const getMaxCopies = (baseId: number) => THREE_STAGE_BASE_IDS.has(baseId) ? 6 : 3;
 
+export const SYNERGY = {
+  fire: { t: [2,4,6], d: "Damage dealt +15% / +30% / +60%" },
+  water: { t: [2,4,6], d: "Def & SpDef +20% / +50% / +100%" },
+  grass: { t: [2,4,6], d: "Damage taken -15% / -30% / -60%" },
+  electric: { t: [2,4,6], d: "SpAtk +20% / +50% / +100%" },
+  normal: { t: [2,4,6], d: "Speed +20% / +50% / +100%" },
+  fighting: { t: [2,4,6], d: "Attack +20% / +50% / +100%" },
+  poison: { t: [2,4,6], d: "Bonus Flat Damage +10 / +25 / +50" },
+  ground: { t: [2,4], d: "Defense +30% / +80%" },
+  flying: { t: [2,4], d: "Speed +20% / +60%" },
+  psychic: { t: [2,4,6], d: "SpAtk & SpDef +20% / +50% / +100%" },
+  bug: { t: [2,4,6], d: "Attack & Speed +15% / +30% / +60%" },
+  rock: { t: [2,4], d: "Defense +50% / +150%" },
+  ghost: { t: [2,4], d: "Damage taken -20% / -50%" },
+  dragon: { t: [2,4], d: "All Stats +10% / +30%" },
+  steel: { t: [2,4], d: "Defense +30% / +80%" },
+  ice: { t: [2,4], d: "Damage taken -15% / -30%" },
+  dark: { t: [2,4], d: "Attack +20% / +50%" },
+  fairy: { t: [2,4], d: "Damage taken -10% / -30%" }
+};
+
+export const getSynLvl = (c: number, t: number[]) => t.reduce((a,v,i) => c>=v ? i : a, -1);
+const getBuffs = (team: Pokemon[]) => {
+  const c: Record<string, number> = {};
+  [...new Set(team.map(p => p.baseId))].forEach(id => POKEMON_DB.find(p=>p.baseId===id)?.types.forEach(t => c[t] = (c[t]||0)+1));
+  let b = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1, dmgIn: 1, dmgOut: 1, flat: 0 };
+  const l = (type: string) => getSynLvl(c[type]||0, SYNERGY[type as keyof typeof SYNERGY]?.t || []);
+  let lvl = l('fire'); if(lvl>=0) b.dmgOut *= [1.15, 1.3, 1.6][lvl];
+  lvl = l('water'); if(lvl>=0) { b.def *= [1.2, 1.5, 2][lvl]; b.spd *= [1.2, 1.5, 2][lvl]; }
+  lvl = l('electric'); if(lvl>=0) b.spa *= [1.2, 1.5, 2][lvl];
+  lvl = l('normal'); if(lvl>=0) b.spe *= [1.2, 1.5, 2][lvl];
+  lvl = l('fighting'); if(lvl>=0) b.atk *= [1.2, 1.5, 2][lvl];
+  lvl = l('poison'); if(lvl>=0) b.flat += [10, 25, 50][lvl];
+  lvl = l('ground'); if(lvl>=0) b.def *= [1.3, 1.8][lvl];
+  lvl = l('flying'); if(lvl>=0) b.spe *= [1.2, 1.6][lvl];
+  lvl = l('psychic'); if(lvl>=0) { b.spa *= [1.2, 1.5, 2][lvl]; b.spd *= [1.2, 1.5, 2][lvl]; }
+  lvl = l('bug'); if(lvl>=0) { b.atk *= [1.15, 1.3, 1.6][lvl]; b.spe *= [1.15, 1.3, 1.6][lvl]; }
+  lvl = l('rock'); if(lvl>=0) b.def *= [1.5, 2.5][lvl];
+  lvl = l('ghost'); if(lvl>=0) b.dmgIn *= [0.8, 0.5][lvl];
+  lvl = l('ice'); if(lvl>=0) b.dmgIn *= [0.85, 0.7][lvl];
+  lvl = l('fairy'); if(lvl>=0) b.dmgIn *= [0.9, 0.7][lvl];
+  lvl = l('steel'); if(lvl>=0) b.def *= [1.3, 1.8][lvl];
+  lvl = l('dark'); if(lvl>=0) b.atk *= [1.2, 1.5][lvl];
+  lvl = l('grass'); if(lvl>=0) b.dmgIn *= [0.85, 0.7, 0.4][lvl];
+  lvl = l('dragon'); if(lvl>=0) { b.atk*=[1.1,1.3][lvl]; b.def*=[1.1,1.3][lvl]; b.spa*=[1.1,1.3][lvl]; b.spd*=[1.1,1.3][lvl]; b.spe*=[1.1,1.3][lvl]; }
+  return b;
+};
+
 const getEvo = (baseId: number, level: number) => {
   let e1 = baseId, e2 = baseId;
   const p1 = POKEMON_DB.find(p => p.baseId === baseId + 1);
@@ -269,21 +317,30 @@ export const useGameStore = create<GameState>()(
         if (!get().isBattling) return; 
 
         let txt = "";
-        const applyDmg = (atk: Pokemon, def: Pokemon) => {
+        const pb = getBuffs(pTeam.filter(p => p.position < 6));
+        const eb = getBuffs(eTeam.filter(e => e.position < 6));
+
+        const applyDmg = (atk: Pokemon, def: Pokemon, aB: typeof pb, dB: typeof pb) => {
           if (def.hp <= 0 || atk.hp <= 0) return;
           atk.status = 'attacking'; def.status = 'damaged';
           const mult = def.types.reduce((acc, t) => acc * getMult(atk.types[0], t), 1);
           if (mult > 1) txt = "Super Effective!"; else if (mult < 1 && mult > 0) txt = "Not very effective..."; else if (mult === 0) txt = "Glancing Hit!"; else txt = "";
+          
           const isSp = atk.stats.spAtk > atk.stats.attack;
-          const atkStat = isSp ? atk.stats.spAtk : atk.stats.attack;
-          const defStat = isSp ? def.stats.spDef : def.stats.defense;
+          const atkStat = isSp ? (atk.stats.spAtk * aB.spa) : (atk.stats.attack * aB.atk);
+          const defStat = isSp ? (def.stats.spDef * dB.spd) : (def.stats.defense * dB.def);
+          
           const basePower = (atkStat * 1.1) * (75 / (75 + defStat * 0.65));
           const effectiveMult = mult === 0 ? 0.25 : mult;
-          const dmg = Math.max(1, Math.round(basePower * effectiveMult));
+          const dmg = Math.max(1, Math.round(basePower * effectiveMult * aB.dmgOut * dB.dmgIn) + aB.flat);
+          
           def.hp = Math.max(0, def.hp - dmg); def.lastDamageTaken = dmg;
         };
 
-        if (p1.stats.speed >= e1.stats.speed) { applyDmg(p1, e1); if (e1.hp > 0) applyDmg(e1, p1); } else { applyDmg(e1, p1); if (p1.hp > 0) applyDmg(p1, e1); }
+        const pSpe = p1.stats.speed * pb.spe;
+        const eSpe = e1.stats.speed * eb.spe;
+
+        if (pSpe >= eSpe) { applyDmg(p1, e1, pb, eb); if (e1.hp > 0) applyDmg(e1, p1, eb, pb); } else { applyDmg(e1, p1, eb, pb); if (p1.hp > 0) applyDmg(p1, e1, pb, eb); }
         set({ playerTeam: pTeam, enemyTeam: eTeam, combatText: txt });
         await new Promise(r => setTimeout(r, 800 * speedMult));
         if (!get().isBattling) return; 
